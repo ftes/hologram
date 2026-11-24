@@ -9,26 +9,26 @@ defmodule HologramFeatureTests.TransientServerStructsTest do
   @reached_to_string {String.Chars.HologramFeatureTests.ReachedStructFixture, :to_string, 1}
   @transient_to_string {String.Chars.HologramFeatureTests.TransientStructFixture, :to_string, 1}
 
-  feature "a struct built and dropped on the server renders its text", %{session: session} do
-    session
+  test "a struct built and dropped on the server renders its text", %{page: page} do
+    page
     |> visit(TransientServerStructsPage)
-    |> assert_text(css("#transient-text"), "transient(transient)")
+    |> assert_text("#transient-text", "transient(transient)")
   end
 
-  feature "a struct that reaches the state through a helper renders after a client re-render",
-          %{session: session} do
-    session
+  test "a struct that reaches the state through a helper renders after a client re-render",
+       %{page: page} do
+    page
     |> visit(TransientServerStructsPage)
-    |> assert_text(css("#reached"), "reached(reached)")
-    |> click(button("Relabel"))
-    |> assert_text(css("#label"), "relabeled")
-    |> assert_text(css("#reached"), "reached(reached)")
+    |> assert_text("#reached", "reached(reached)")
+    |> click_button("Relabel")
+    |> assert_text("#label", "relabeled")
+    |> assert_text("#reached", "reached(reached)")
   end
 
-  feature "structs built in a closure render on the client", %{session: session} do
-    session
+  test "structs built in a closure render on the client", %{page: page} do
+    page
     |> visit(TransientServerStructsPage)
-    |> assert_text(css("#items"), "reached(item 1)reached(item 2)")
+    |> assert_text("#items", "reached(item 1)reached(item 2)")
   end
 
   test "the implementation of a struct, dropped on the server or put in the state, is in a chunk of the struct's type and in no other bundle" do

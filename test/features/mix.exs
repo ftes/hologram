@@ -29,9 +29,9 @@ defmodule HologramFeatureTests.MixProject do
       {:jason, "~> 1.0"},
       {:mint, "~> 1.0", only: :test},
       {:phoenix, "~> 1.7"},
+      {:playwright, "~> 1.65.0-rc.4", hex: :playwright_ex, only: :test},
       {:telemetry_metrics, "~> 1.0"},
-      {:telemetry_poller, "~> 1.0"},
-      {:wallaby, "~> 0.30", only: :test}
+      {:telemetry_poller, "~> 1.0"}
     ]
   end
 

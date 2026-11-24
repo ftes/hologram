@@ -27,75 +27,76 @@ defmodule HologramFeatureTests.TrustedHtmlTest do
              ~s(<table id="direct_table"><!--hologram-html--><tbody><tr><td>direct row 1</td></tr></tbody><!--/hologram-html--></table>)
   end
 
-  feature "renders trusted HTML as markup, without its scripts", %{session: session} do
-    session
+  test "renders trusted HTML as markup, without its scripts", %{page: page} do
+    page
     |> visit(Page1)
-    |> assert_text(css("#content p.trusted strong"), "world")
-    |> assert_script_result("return document.querySelector('#content script') === null;", true)
+    |> assert_text("#content p.trusted strong", "world")
+    |> assert_none("#content script")
     |> assert_script_result(@no_warnings, true)
   end
 
-  feature "keeps malformed trusted HTML to its place", %{session: session} do
-    session
+  test "keeps malformed trusted HTML to its place", %{page: page} do
+    page
     |> visit(Page1)
-    |> assert_text(css("#malformed > div.unclosed > em"), "open")
-    |> assert_text(css("#malformed + p#after_malformed"), "after")
+    |> assert_text("#malformed > div.unclosed > em", "open")
+    |> assert_text("#malformed + p#after_malformed", "after")
     |> assert_script_result(@no_warnings, true)
   end
 
-  feature "renders trusted table rows inside the table", %{session: session} do
-    session
+  test "renders trusted table rows inside the table", %{page: page} do
+    page
     |> visit(Page1)
-    |> assert_text(css("#rows_table > tbody#rows > tr > td"), "row 1")
-    |> assert_text(css("#direct_table > tbody > tr > td"), "direct row 1")
+    |> assert_text("#rows_table > tbody#rows > tr > td", "row 1")
+    |> assert_text("#direct_table > tbody > tr > td", "direct row 1")
     |> assert_script_result(@no_warnings, true)
   end
 
-  feature "an action replaces trusted HTML, without its scripts", %{session: session} do
-    session
+  test "an action replaces trusted HTML, without its scripts", %{page: page} do
+    page
     |> visit(Page1)
-    |> click(button("Replace content"))
-    |> assert_text(css("#content p.replaced em"), "content")
-    |> refute_has(css("#content p.trusted"))
-    |> assert_script_result("return document.querySelector('#content script') === null;", true)
+    |> click_button("Replace content")
+    |> assert_text("#content p.replaced em", "content")
+    |> refute_has("#content p.trusted")
+    |> assert_none("#content script")
   end
 
-  feature "an action replaces trusted table rows", %{session: session} do
-    session
+  test "an action replaces trusted table rows", %{page: page} do
+    page
     |> visit(Page1)
-    |> click(button("Add row"))
-    |> assert_text(css("#rows > tr:nth-child(2) > td"), "row 2")
-    |> assert_has(css("#rows > tr", count: 2))
+    |> click_button("Add row")
+    |> assert_text("#rows > tr:nth-child(2) > td", "row 2")
+    |> assert_has("#rows > tr", count: 2)
   end
 
-  feature "an action replaces trusted table rows placed directly in a table", %{session: session} do
-    session
+  test "an action replaces trusted table rows placed directly in a table", %{page: page} do
+    page
     |> visit(Page1)
-    |> click(button("Add direct row"))
-    |> assert_text(css("#direct_table > tbody > tr:nth-child(2) > td"), "direct row 2")
-    |> assert_has(css("#direct_table > tbody > tr", count: 2))
-    |> refute_has(css("#direct_table > tr"))
+    |> click_button("Add direct row")
+    |> assert_text("#direct_table > tbody > tr:nth-child(2) > td", "direct row 2")
+    |> assert_has("#direct_table > tbody > tr", count: 2)
+    |> refute_has("#direct_table > tr")
   end
 
-  feature "renders trusted HTML on a page navigated to, without its scripts", %{session: session} do
-    session
+  test "renders trusted HTML on a page navigated to, without its scripts", %{page: page} do
+    page
     |> visit(Page1)
-    |> click(link("Page 2 link"))
+    |> click_link("Page 2 link")
     |> assert_page(Page2)
-    |> assert_text(css("#content p.navigated b"), "page")
-    |> assert_script_result("return document.querySelector('#content script') === null;", true)
+    |> assert_text("#content p.navigated b", "page")
+    |> assert_none("#content script")
   end
 
   # The browser caps the console entry an uncaught error writes, eliding the message well before
   # the page module's name ends, so only the start of the message is matched.
-  feature "raises when the browser moves trusted HTML out of place", %{session: session} do
-    assert_js_error(session, "trusted HTML rendered in HologramFeatureTests", fn ->
-      visit(session, Page3)
+  test "raises when the browser moves trusted HTML out of place", %{page: page} do
+    # Visited by path, since the page never mounts.
+    assert_js_error(page, "trusted HTML rendered in HologramFeatureTests", fn ->
+      visit(page, Page3.__route__())
     end)
   end
 
-  feature "keeps trusted HTML something else changed before Hologram started, and warns", %{
-    session: session
+  test "keeps trusted HTML something else changed before Hologram started, and warns", %{
+    page: page
   } do
     warned = """
     return window.trustedHtmlWarnings.length === 1 &&
@@ -104,12 +105,12 @@ defmodule HologramFeatureTests.TrustedHtmlTest do
       );
     """
 
-    session
+    page
     |> visit(Page4)
-    |> assert_text(css("#content b"), "changed")
+    |> assert_text("#content b", "changed")
     |> assert_script_result(warned, true)
-    |> click(button("Replace content"))
-    |> assert_text(css("#content i"), "replaced")
-    |> refute_has(css("#content b"))
+    |> click_button("Replace content")
+    |> assert_text("#content i", "replaced")
+    |> refute_has("#content b")
   end
 end

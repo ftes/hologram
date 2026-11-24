@@ -3,13 +3,13 @@ defmodule HologramFeatureTests.Events.StopPropagationTest do
 
   alias HologramFeatureTests.Events.StopPropagationPage
 
-  feature "stop_propagation keeps the outer binding from firing while a plain binding bubbles",
-          %{session: session} do
-    session
+  test "stop_propagation keeps the outer binding from firing while a plain binding bubbles",
+       %{page: page} do
+    page
     |> visit(StopPropagationPage)
-    |> click(css("#plain_button"))
-    |> assert_text(css("#result"), "{true, true, false, false}")
-    |> click(css("#stopped_button"))
-    |> assert_text(css("#result"), "{true, true, true, false}")
+    |> click("#plain_button")
+    |> assert_text("#result", "{true, true, false, false}")
+    |> click("#stopped_button")
+    |> assert_text("#result", "{true, true, true, false}")
   end
 end

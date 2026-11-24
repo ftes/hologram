@@ -8,6 +8,7 @@ The app's pages put ecosystem structs (an `ash_money` `%Money{}`, Ecto schemas) 
 
 ```sh
 mix deps.get
+mix playwright.install chromium
 mix test
 ```
 

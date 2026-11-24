@@ -8,95 +8,95 @@ defmodule HologramFeatureTests.ControlFlow.TryTest do
   alias HologramFeatureTests.ControlFlow.TryPage
 
   describe "rescue clauses" do
-    feature "without a module", %{session: session} do
-      session
+    test "without a module", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Rescue without a module"))
-      |> assert_text(css("#result"), ":rescued_any")
+      |> click_button("Rescue without a module")
+      |> assert_text("#result", ":rescued_any")
     end
 
-    feature "with a single module", %{session: session} do
-      session
+    test "with a single module", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Rescue with a single module"))
-      |> assert_text(css("#result"), ~s/{:rescued_single, "my message"}/)
+      |> click_button("Rescue with a single module")
+      |> assert_text("#result", ~s/{:rescued_single, "my message"}/)
     end
 
-    feature "with multiple modules", %{session: session} do
-      session
+    test "with multiple modules", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Rescue with multiple modules"))
-      |> assert_text(css("#result"), ~s/{:rescued_multiple, "my message"}/)
+      |> click_button("Rescue with multiple modules")
+      |> assert_text("#result", ~s/{:rescued_multiple, "my message"}/)
     end
 
-    feature "unmatched module re-raises", %{session: session} do
-      assert_client_error session,
+    test "unmatched module re-raises", %{page: page} do
+      assert_client_error page,
                           RuntimeError,
                           "my message",
                           fn ->
-                            session
+                            page
                             |> visit(TryPage)
-                            |> click(button("Rescue unmatched module"))
+                            |> click_button("Rescue unmatched module")
                           end
     end
 
-    feature "bare reason is normalized into an exception struct", %{session: session} do
-      session
+    test "bare reason is normalized into an exception struct", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Rescue bare reason"))
-      |> assert_text(css("#result"), ~s/{:rescued_normalized, "argument error"}/)
+      |> click_button("Rescue bare reason")
+      |> assert_text("#result", ~s/{:rescued_normalized, "argument error"}/)
     end
 
-    feature "reraise re-raises the rescued exception", %{session: session} do
-      assert_client_error session,
+    test "reraise re-raises the rescued exception", %{page: page} do
+      assert_client_error page,
                           ArgumentError,
                           "my message",
                           fn ->
-                            session
+                            page
                             |> visit(TryPage)
-                            |> click(button("Rescue reraise"))
+                            |> click_button("Rescue reraise")
                           end
     end
   end
 
   describe "catch clauses" do
-    feature "throw kind", %{session: session} do
-      session
+    test "throw kind", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Catch throw"))
-      |> assert_text(css("#result"), ~s/{:caught_throw, "my value"}/)
+      |> click_button("Catch throw")
+      |> assert_text("#result", ~s/{:caught_throw, "my value"}/)
     end
 
-    feature "exit kind", %{session: session} do
-      session
+    test "exit kind", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Catch exit"))
-      |> assert_text(css("#result"), ~s/{:caught_exit, "my reason"}/)
+      |> click_button("Catch exit")
+      |> assert_text("#result", ~s/{:caught_exit, "my reason"}/)
     end
 
-    feature "error kind", %{session: session} do
-      session
+    test "error kind", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Catch error"))
-      |> assert_text(css("#result"), ~s/{:caught_error, "my message"}/)
+      |> click_button("Catch error")
+      |> assert_text("#result", ~s/{:caught_error, "my message"}/)
     end
 
-    feature "unmatched kind re-raises", %{session: session} do
-      assert_client_error session,
+    test "unmatched kind re-raises", %{page: page} do
+      assert_client_error page,
                           RuntimeError,
                           "my message",
                           fn ->
-                            session
+                            page
                             |> visit(TryPage)
-                            |> click(button("Catch unmatched kind"))
+                            |> click_button("Catch unmatched kind")
                           end
     end
 
-    feature "matches a struct pattern value", %{session: session} do
-      session
+    test "matches a struct pattern value", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Catch struct throw"))
-      |> assert_text(css("#result"), "{:caught, 1}")
+      |> click_button("Catch struct throw")
+      |> assert_text("#result", "{:caught, 1}")
     end
   end
 
@@ -108,102 +108,102 @@ defmodule HologramFeatureTests.ControlFlow.TryTest do
     # the raise site reraise has to preserve, not the clause re-raising it.
     @reraise_line 228
 
-    feature "holds the frame the error was raised in", %{session: session} do
+    test "holds the frame the error was raised in", %{page: page} do
       expected =
         "{:stacktrace, [{#{inspect(TryPage)}, :action, 3, " <>
           ~s([file: ~c"app/pages/control_flow/try_page.ex", ) <>
           "line: #{@raise_line}, error_info: %{module: Exception}]}]}"
 
-      session
+      page
       |> visit(TryPage)
-      |> click(button("Stacktrace"))
-      |> assert_text(css("#result"), expected)
+      |> click_button("Stacktrace")
+      |> assert_text("#result", expected)
     end
 
-    feature "reraise preserves the frame of the original raise site", %{session: session} do
+    test "reraise preserves the frame of the original raise site", %{page: page} do
       expected =
         "{:reraise_stacktrace, [{#{inspect(TryPage)}, :action, 3, " <>
           ~s([file: ~c"app/pages/control_flow/try_page.ex", ) <>
           "line: #{@reraise_line}, error_info: %{module: Exception}]}]}"
 
-      session
+      page
       |> visit(TryPage)
-      |> click(button("Reraise stacktrace"))
-      |> assert_text(css("#result"), expected)
+      |> click_button("Reraise stacktrace")
+      |> assert_text("#result", expected)
     end
   end
 
   describe "else clauses" do
-    feature "matches the do result", %{session: session} do
-      session
+    test "matches the do result", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Else with a match"))
-      |> assert_text(css("#result"), ":else_two")
+      |> click_button("Else with a match")
+      |> assert_text("#result", ":else_two")
     end
 
-    feature "raises TryClauseError when no clause matches", %{session: session} do
-      assert_client_error session,
+    test "raises TryClauseError when no clause matches", %{page: page} do
+      assert_client_error page,
                           TryClauseError,
                           "no try clause matching:\n\n    :no_match\n",
                           fn ->
-                            session
+                            page
                             |> visit(TryPage)
-                            |> click(button("Else without a match"))
+                            |> click_button("Else without a match")
                           end
     end
 
-    feature "matches a struct pattern", %{session: session} do
-      session
+    test "matches a struct pattern", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Else with a struct pattern"))
-      |> assert_text(css("#result"), "{:else_matched, 2}")
+      |> click_button("Else with a struct pattern")
+      |> assert_text("#result", "{:else_matched, 2}")
     end
   end
 
   describe "after block" do
-    feature "keeps the do result", %{session: session} do
-      session
+    test "keeps the do result", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("After keeps result"))
-      |> assert_text(css("#result"), ":body_result")
+      |> click_button("After keeps result")
+      |> assert_text("#result", ":body_result")
     end
 
-    feature "runs on the success path", %{session: session} do
-      assert_client_error session,
+    test "runs on the success path", %{page: page} do
+      assert_client_error page,
                           RuntimeError,
                           "after ran",
                           fn ->
-                            session
+                            page
                             |> visit(TryPage)
-                            |> click(button("After runs on success"))
+                            |> click_button("After runs on success")
                           end
     end
 
-    feature "runs on the failure path", %{session: session} do
-      assert_client_error session,
+    test "runs on the failure path", %{page: page} do
+      assert_client_error page,
                           RuntimeError,
                           "after ran",
                           fn ->
-                            session
+                            page
                             |> visit(TryPage)
-                            |> click(button("After runs on failure"))
+                            |> click_button("After runs on failure")
                           end
     end
   end
 
   describe "variable scoping" do
-    feature "do block bindings do not leak", %{session: session} do
-      session
+    test "do block bindings do not leak", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Do block vars do not leak"))
-      |> assert_text(css("#result"), "{1, 2}")
+      |> click_button("Do block vars do not leak")
+      |> assert_text("#result", "{1, 2}")
     end
 
-    feature "clause bindings do not leak", %{session: session} do
-      session
+    test "clause bindings do not leak", %{page: page} do
+      page
       |> visit(TryPage)
-      |> click(button("Clause vars do not leak"))
-      |> assert_text(css("#result"), "{1, 2}")
+      |> click_button("Clause vars do not leak")
+      |> assert_text("#result", "{1, 2}")
     end
   end
 end

@@ -17,17 +17,17 @@ defmodule HologramEcosystemTests.Ash.PricedItemPageTest do
     |> Map.fetch!(:resp_body)
   end
 
-  feature "a money struct a command sends renders", %{session: session} do
-    session
+  test "a money struct a command sends renders", %{page: page} do
+    page
     |> visit(PricedItemPage)
-    |> click(button("Reprice"))
-    |> assert_text(css("#price"), "EUR 20")
+    |> click_button("Reprice")
+    |> assert_text("#price", "EUR 20")
   end
 
-  feature "a money struct in the state renders", %{session: session} do
-    session
+  test "a money struct in the state renders", %{page: page} do
+    page
     |> visit(PricedItemPage)
-    |> assert_text(css("#price"), "EUR 10")
+    |> assert_text("#price", "EUR 10")
   end
 
   test "the money type's chunks are named in the page's document" do

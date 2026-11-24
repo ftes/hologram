@@ -3,9 +3,9 @@ defmodule HologramEcosystemTests.PageTest do
 
   alias HologramEcosystemTests.PlainPage
 
-  feature "a page request is served", %{session: session} do
-    session
+  test "a page request is served", %{page: page} do
+    page
     |> visit(PlainPage)
-    |> assert_text(css("#text"), "Served with the ecosystem libraries")
+    |> assert_text("#text", "Served with the ecosystem libraries")
   end
 end

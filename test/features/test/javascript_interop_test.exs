@@ -11,305 +11,305 @@ defmodule HologramFeatureTests.JavaScriptInteropTest do
   alias HologramFeatureTests.JavaScriptInterop.SyncPage
 
   describe "JS.call/2" do
-    feature "calls imported function directly", %{session: session} do
-      session
+    test "calls imported function directly", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Call receiverless function"))
-      |> assert_text(css("#call_result"), "{27, true}")
+      |> click_button("Call receiverless function")
+      |> assert_text("#call_result", "{27, true}")
     end
 
-    feature "calls global function", %{session: session} do
-      session
+    test "calls global function", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Call global function"))
-      |> assert_text(css("#call_result"), "{42, true}")
+      |> click_button("Call global function")
+      |> assert_text("#call_result", "{42, true}")
     end
   end
 
   describe "JS.call/3 with sync methods" do
-    feature "sync method", %{session: session} do
-      session
+    test "sync method", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Call sync method"))
-      |> assert_text(css("#call_result"), "{3, true}")
+      |> click_button("Call sync method")
+      |> assert_text("#call_result", "{3, true}")
     end
 
-    feature "callback interop", %{session: session} do
-      session
+    test "callback interop", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Callback interop"))
-      |> assert_text(css("#call_result"), "[2, 4, 6]")
+      |> click_button("Callback interop")
+      |> assert_text("#call_result", "[2, 4, 6]")
     end
   end
 
   # Async tests use JS.call/3 but cover JS.call/2 as well, since both go through
   # the same call/4 runtime implementation and Promise handling.
   describe "JS.call/3 with async methods" do
-    feature "async method", %{session: session} do
-      session
+    test "async method", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Call async method"))
-      |> assert_text(css("#call_result"), "{30, true}")
+      |> click_button("Call async method")
+      |> assert_text("#call_result", "{30, true}")
     end
 
-    feature "promise-returning method", %{session: session} do
-      session
+    test "promise-returning method", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Call promise method"))
-      |> assert_text(css("#call_result"), "{300, true}")
+      |> click_button("Call promise method")
+      |> assert_text("#call_result", "{300, true}")
     end
 
-    feature "async andalso", %{session: session} do
-      session
+    test "async andalso", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async andalso"))
-      |> assert_text(css("#call_result"), ":andalso_right")
+      |> click_button("Async andalso")
+      |> assert_text("#call_result", ":andalso_right")
     end
 
-    feature "async anonymous function call", %{session: session} do
-      session
+    test "async anonymous function call", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async anonymous function call"))
-      |> assert_text(css("#call_result"), "{27, true}")
+      |> click_button("Async anonymous function call")
+      |> assert_text("#call_result", "{27, true}")
     end
 
-    feature "async apply", %{session: session} do
-      session
+    test "async apply", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async apply"))
-      |> assert_text(css("#call_result"), "{31, true}")
+      |> click_button("Async apply")
+      |> assert_text("#call_result", "{31, true}")
     end
 
-    feature "async case", %{session: session} do
-      session
+    test "async case", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async case"))
-      |> assert_text(css("#call_result"), ":matched")
+      |> click_button("Async case")
+      |> assert_text("#call_result", ":matched")
     end
 
-    feature "async comprehension", %{session: session} do
-      session
+    test "async comprehension", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async comprehension"))
-      |> assert_text(css("#call_result"), "[30, 60, 90]")
+      |> click_button("Async comprehension")
+      |> assert_text("#call_result", "[30, 60, 90]")
     end
 
-    feature "async cond", %{session: session} do
-      session
+    test "async cond", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async cond"))
-      |> assert_text(css("#call_result"), ":correct")
+      |> click_button("Async cond")
+      |> assert_text("#call_result", ":correct")
     end
 
-    feature "async dynamic call", %{session: session} do
-      session
+    test "async dynamic call", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async dynamic call"))
-      |> assert_text(css("#call_result"), "{33, true}")
+      |> click_button("Async dynamic call")
+      |> assert_text("#call_result", "{33, true}")
     end
 
-    feature "async orelse", %{session: session} do
-      session
+    test "async orelse", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async orelse"))
-      |> assert_text(css("#call_result"), ":orelse_right")
+      |> click_button("Async orelse")
+      |> assert_text("#call_result", ":orelse_right")
     end
 
-    feature "async with", %{session: session} do
-      session
+    test "async with", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async with"))
-      |> assert_text(css("#call_result"), "{:ok, 40}")
+      |> click_button("Async with")
+      |> assert_text("#call_result", "{:ok, 40}")
     end
 
     # TODO: add "async try" feature test once async try expression is fully implemented
   end
 
-  feature "JS.delete/2", %{session: session} do
-    session
+  test "JS.delete/2", %{page: page} do
+    page
     |> visit(SyncPage)
-    |> click(button("Delete property"))
-    |> assert_text(css("#call_result"), ~s({"undefined", true}))
+    |> click_button("Delete property")
+    |> assert_text("#call_result", ~s({"undefined", true}))
   end
 
   describe "JS.dispatch_event" do
-    feature "dispatch_event/2 (CustomEvent, no opts)", %{session: session} do
-      session
+    test "dispatch_event/2 (CustomEvent, no opts)", %{page: page} do
+      page
       |> visit(DispatchEventPage)
-      |> click(button("Dispatch default"))
-      |> assert_text(css("#call_result"), ~s("test:alpha"))
+      |> click_button("Dispatch default")
+      |> assert_text("#call_result", ~s("test:alpha"))
     end
 
-    feature "dispatch_event/3 with opts (CustomEvent, with detail)", %{session: session} do
-      session
+    test "dispatch_event/3 with opts (CustomEvent, with detail)", %{page: page} do
+      page
       |> visit(DispatchEventPage)
-      |> click(button("Dispatch with detail"))
-      |> assert_text(css("#call_result"), "{99, true}")
+      |> click_button("Dispatch with detail")
+      |> assert_text("#call_result", "{99, true}")
     end
 
-    feature "dispatch_event/3 with type (MouseEvent, no opts)", %{session: session} do
-      session
+    test "dispatch_event/3 with type (MouseEvent, no opts)", %{page: page} do
+      page
       |> visit(DispatchEventPage)
-      |> click(button("Dispatch with event type"))
-      |> assert_text(css("#call_result"), ~s("MouseEvent"))
+      |> click_button("Dispatch with event type")
+      |> assert_text("#call_result", ~s("MouseEvent"))
     end
 
-    feature "dispatch_event/4 (CustomEvent, cancelable)", %{session: session} do
-      session
+    test "dispatch_event/4 (CustomEvent, cancelable)", %{page: page} do
+      page
       |> visit(DispatchEventPage)
-      |> click(button("Dispatch cancelable"))
-      |> assert_text(css("#call_result"), "{false, true}")
+      |> click_button("Dispatch cancelable")
+      |> assert_text("#call_result", "{false, true}")
     end
 
-    feature "dispatch on :document target", %{session: session} do
-      session
+    test "dispatch on :document target", %{page: page} do
+      page
       |> visit(DispatchEventPage)
-      |> click(button("Dispatch on document"))
-      |> assert_text(css("#call_result"), ~s("test:delta"))
+      |> click_button("Dispatch on document")
+      |> assert_text("#call_result", ~s("test:delta"))
     end
   end
 
   describe "JS.eval/1" do
-    feature "sync", %{session: session} do
-      session
+    test "sync", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Evaluate expression"))
-      |> assert_text(css("#call_result"), "{7, true}")
+      |> click_button("Evaluate expression")
+      |> assert_text("#call_result", "{7, true}")
     end
 
-    feature "async (Promise -> Task)", %{session: session} do
-      session
+    test "async (Promise -> Task)", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async eval"))
-      |> assert_text(css("#call_result"), "{88, true}")
+      |> click_button("Async eval")
+      |> assert_text("#call_result", "{88, true}")
     end
   end
 
   describe "JS.exec/1" do
-    feature "sync", %{session: session} do
-      session
+    test "sync", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Execute code"))
-      |> assert_text(css("#call_result"), "{5, true}")
+      |> click_button("Execute code")
+      |> assert_text("#call_result", "{5, true}")
     end
 
-    feature "async (Promise -> Task)", %{session: session} do
-      session
+    test "async (Promise -> Task)", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async exec"))
-      |> assert_text(css("#call_result"), "{66, true}")
+      |> click_button("Async exec")
+      |> assert_text("#call_result", "{66, true}")
     end
   end
 
   describe "JS.get/2" do
-    feature "sync", %{session: session} do
-      session
+    test "sync", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Get property"))
-      |> assert_text(css("#call_result"), "{10, true}")
+      |> click_button("Get property")
+      |> assert_text("#call_result", "{10, true}")
     end
 
-    feature "async (Promise -> Task)", %{session: session} do
-      session
+    test "async (Promise -> Task)", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async get"))
-      |> assert_text(css("#call_result"), "{77, true}")
+      |> click_button("Async get")
+      |> assert_text("#call_result", "{77, true}")
     end
   end
 
-  feature "JS.instanceof/2", %{session: session} do
-    session
+  test "JS.instanceof/2", %{page: page} do
+    page
     |> visit(SyncPage)
-    |> click(button("Instanceof check"))
-    |> assert_text(css("#call_result"), "{true, true}")
+    |> click_button("Instanceof check")
+    |> assert_text("#call_result", "{true, true}")
   end
 
   describe "JS.new/2" do
-    feature "sync", %{session: session} do
-      session
+    test "sync", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("New instance"))
-      |> assert_text(css("#call_result"), "{42, true}")
+      |> click_button("New instance")
+      |> assert_text("#call_result", "{42, true}")
     end
 
-    feature "async (Promise -> Task)", %{session: session} do
-      session
+    test "async (Promise -> Task)", %{page: page} do
+      page
       |> visit(AsyncPage)
-      |> click(button("Async new"))
-      |> assert_text(css("#call_result"), "{51, true}")
+      |> click_button("Async new")
+      |> assert_text("#call_result", "{51, true}")
     end
   end
 
-  feature "JS.set/3", %{session: session} do
-    session
+  test "JS.set/3", %{page: page} do
+    page
     |> visit(SyncPage)
-    |> click(button("Set property"))
-    |> assert_text(css("#call_result"), "{20, true}")
+    |> click_button("Set property")
+    |> assert_text("#call_result", "{20, true}")
   end
 
-  feature "JS.typeof/1", %{session: session} do
-    session
+  test "JS.typeof/1", %{page: page} do
+    page
     |> visit(SyncPage)
-    |> click(button("Typeof value"))
-    |> assert_text(css("#call_result"), ~s("object"))
+    |> click_button("Typeof value")
+    |> assert_text("#call_result", ~s("object"))
   end
 
   describe "~JS sigil" do
-    feature "DOM manipulation", %{session: session} do
-      session
+    test "DOM manipulation", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Run JS sigil void"))
-      |> assert_text(css("#js_sigil_result"), "Hologram")
+      |> click_button("Run JS sigil void")
+      |> assert_text("#js_sigil_result", "Hologram")
     end
 
-    feature "return value is boxed", %{session: session} do
-      session
+    test "return value is boxed", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Run JS sigil returning value"))
-      |> assert_text(css("#call_result"), "{11, true}")
+      |> click_button("Run JS sigil returning value")
+      |> assert_text("#call_result", "{11, true}")
     end
   end
 
   describe "Hologram.dispatchAction()" do
-    feature "with params", %{session: session} do
-      session
+    test "with params", %{page: page} do
+      page
       |> visit(DispatchActionPage)
       |> execute_script(
         "Hologram.dispatchAction('dispatch_with_params', 'page', {amount: 42, label: 'test'});"
       )
-      |> assert_text(css("#call_result"), ~s({42, "test"}))
+      |> assert_text("#call_result", ~s({42, "test"}))
     end
 
-    feature "without params", %{session: session} do
-      session
+    test "without params", %{page: page} do
+      page
       |> visit(DispatchActionPage)
       |> execute_script("Hologram.dispatchAction('dispatch_without_params', 'page');")
-      |> assert_text(css("#call_result"), ":dispatched")
+      |> assert_text("#call_result", ":dispatched")
     end
 
-    feature "pending action dispatched before runtime loads", %{session: session} do
-      session
+    test "pending action dispatched before runtime loads", %{page: page} do
+      page
       |> visit(PendingActionsPage)
-      |> assert_text(css("#call_result"), "{99, true}")
+      |> assert_text("#call_result", "{99, true}")
     end
 
-    feature "action dispatched by an inline script after a client-side navigation",
-            %{session: session} do
-      session
+    test "action dispatched by an inline script after a client-side navigation",
+         %{page: page} do
+      page
       |> visit(PendingActionsSourcePage)
-      |> click(link("Pending actions link"))
+      |> click_link("Pending actions link")
       |> assert_page(PendingActionsPage)
-      |> assert_text(css("#call_result"), "{99, true}")
+      |> assert_text("#call_result", "{99, true}")
     end
 
     # The target comes straight from the caller here, so a cid nothing is registered under is a
     # mistake in the calling code rather than a dispatch that outlived its page. It is named as
     # one, which is what puts it in front of whoever mistyped it.
-    feature "target that no component is registered under", %{session: session} do
+    test "target that no component is registered under", %{page: page} do
       expected_msg = ~s(invalid action target, there is no component with CID: "no_such_cid")
 
-      assert_client_error session, ArgumentError, expected_msg, fn ->
-        session
+      assert_client_error page, ArgumentError, expected_msg, fn ->
+        page
         |> visit(DispatchActionPage)
         |> execute_script("Hologram.dispatchAction('whatever', 'no_such_cid');")
       end
@@ -317,61 +317,61 @@ defmodule HologramFeatureTests.JavaScriptInteropTest do
   end
 
   describe "binding resolution" do
-    feature "global", %{session: session} do
-      session
+    test "global", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Resolve global"))
-      |> assert_text(css("#call_result"), "{4, true}")
+      |> click_button("Resolve global")
+      |> assert_text("#call_result", "{4, true}")
     end
 
-    feature "imported", %{session: session} do
-      session
+    test "imported", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Resolve imported"))
-      |> assert_text(css("#call_result"), "{12, true}")
+      |> click_button("Resolve imported")
+      |> assert_text("#call_result", "{12, true}")
     end
 
-    feature "object ref", %{session: session} do
-      session
+    test "object ref", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Resolve object ref"))
-      |> assert_text(css("#call_result"), "{15, true}")
+      |> click_button("Resolve object ref")
+      |> assert_text("#call_result", "{15, true}")
     end
   end
 
   describe "js_import path resolution" do
-    feature "colocated file (relative to caller)", %{session: session} do
-      session
+    test "colocated file (relative to caller)", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Call colocated function"))
-      |> assert_text(css("#call_result"), "{24, true}")
+      |> click_button("Call colocated function")
+      |> assert_text("#call_result", "{24, true}")
     end
 
-    feature "assets dir file (relative to caller)", %{session: session} do
-      session
+    test "assets dir file (relative to caller)", %{page: page} do
+      page
       |> visit(SyncPage)
-      |> click(button("Call assets dir function"))
-      |> assert_text(css("#call_result"), "{16, true}")
+      |> click_button("Call assets dir function")
+      |> assert_text("#call_result", "{16, true}")
     end
 
-    feature "npm package", %{session: session} do
-      session
+    test "npm package", %{page: page} do
+      page
       |> visit(NpmImportPage)
-      |> click(button("Call npm method"))
-      |> assert_text(css("#call_result"), "{123, true}")
+      |> click_button("Call npm method")
+      |> assert_text("#call_result", "{123, true}")
     end
   end
 
   describe "DOM patching" do
-    feature "JS-managed subtree is preserved after state change", %{session: session} do
-      session
+    test "JS-managed subtree is preserved after state change", %{page: page} do
+      page
       |> visit(DOMPatchingPage)
-      |> click(button("Populate JS subtree"))
-      |> assert_text(css("#counter"), "1")
-      |> assert_text(css("#js_managed"), "JS managed content")
-      |> click(button("Increment counter"))
-      |> assert_text(css("#counter"), "2")
-      |> assert_text(css("#js_managed"), "JS managed content")
+      |> click_button("Populate JS subtree")
+      |> assert_text("#counter", "1")
+      |> assert_text("#js_managed", "JS managed content")
+      |> click_button("Increment counter")
+      |> assert_text("#counter", "2")
+      |> assert_text("#js_managed", "JS managed content")
     end
   end
 end

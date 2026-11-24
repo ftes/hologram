@@ -1,13 +1,59 @@
 defmodule HologramCowboyTests.Helpers do
+  import Hologram.Test.FeatureHelpers, only: [track_js_errors: 1]
+  import Playwright.Test.Assertions
+
   alias Hologram.Realtime
   alias Hologram.Realtime.SubscriptionRegistry
+  alias Playwright.Browser
+  alias Playwright.BrowserContext
+  alias Playwright.Expect
+  alias Playwright.Locator
+  alias Playwright.Page
 
-  @max_wait_time Application.compile_env(:wallaby, :max_wait_time, 3_000)
+  @doc """
+  Asserts that the element matching the CSS selector shows the given text.
+  """
+  def assert_text(page, selector, text) do
+    page
+    |> Page.locator(selector)
+    |> Expect.to_contain_text!(text, use_inner_text: true)
+
+    page
+  end
+
+  @doc """
+  Clicks the element matching the CSS selector.
+  """
+  def click(page, selector) do
+    page
+    |> Page.locator(selector)
+    |> Locator.click!()
+
+    page
+  end
+
+  @doc """
+  Runs the script in the page.
+  """
+  def execute_script(page, script) do
+    Page.evaluate!(page, script)
+    page
+  end
+
+  @doc """
+  Opens a page in a new context of the browser: another user, with cookies and
+  storage of its own.
+  """
+  def new_session(browser) do
+    context = Browser.new_context!(browser)
+    track_js_errors(context)
+    BrowserContext.new_page!(context)
+  end
 
   @doc """
   Blocks until at least `count` (default 1) `SubscriptionRegistry` connections
   hold a binding on `channel`, then returns the `session` so the helper can be
-  piped. Raises if the count is not reached within `@max_wait_time`.
+  piped. Raises if the count is not reached within the expect timeout.
 
   Gate any broadcast whose recipients a test asserts on: subscriptions register
   asynchronously after the page mounts (handshake POST + SSE attach), and
@@ -18,25 +64,16 @@ defmodule HologramCowboyTests.Helpers do
   A connection counts once its SSE process can receive broadcasts on `channel`,
   not merely once the registry records the binding.
   """
-  def wait_for_subscription(session, channel, count \\ 1, start_time \\ nil) do
-    start_time = start_time || current_time()
+  def wait_for_subscription(session, channel, count \\ 1) do
+    Expect.poll!(
+      fn -> subscription_count(channel) end,
+      &assert(
+        &1 >= count,
+        "Timed out waiting for #{count} subscription(s) on #{inspect(channel)}"
+      )
+    )
 
-    cond do
-      subscription_count(channel) >= count ->
-        session
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for #{count} subscription(s) on #{inspect(channel)}"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_subscription(session, channel, count, start_time)
-    end
-  end
-
-  defp current_time do
-    :erlang.monotonic_time(:milli_seconds)
+    session
   end
 
   # Whether the connection holds a binding on the channel and its SSE process has
@@ -53,9 +90,5 @@ defmodule HologramCowboyTests.Helpers do
     SubscriptionRegistry.ets_table_name()
     |> :ets.tab2list()
     |> Enum.count(fn {_instance_id, entry} -> receiving?(entry, channel) end)
-  end
-
-  defp timed_out?(start_time) do
-    current_time() - start_time > @max_wait_time
   end
 end

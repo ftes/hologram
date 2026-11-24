@@ -25,369 +25,369 @@ defmodule HologramFeatureTests.OperatorsTest do
   @string_b "bbb"
 
   describe "overridable general operators" do
-    feature "unary +", %{session: session} do
-      session
+    test "unary +", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='unary+']"))
-      |> assert_text(css("#result"), inspect(+@integer_a))
+      |> click("button[id='unary+']")
+      |> assert_text("#result", inspect(+@integer_a))
     end
 
-    feature "unary -", %{session: session} do
-      session
+    test "unary -", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='unary-']"))
-      |> assert_text(css("#result"), inspect(-@integer_a))
+      |> click("button[id='unary-']")
+      |> assert_text("#result", inspect(-@integer_a))
     end
 
-    feature "+", %{session: session} do
-      session
+    test "+", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='+']"))
-      |> assert_text(css("#result"), inspect(@integer_a + @integer_b))
+      |> click("button[id='+']")
+      |> assert_text("#result", inspect(@integer_a + @integer_b))
     end
 
-    feature "-", %{session: session} do
-      session
+    test "-", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='-']"))
-      |> assert_text(css("#result"), inspect(@integer_a - @integer_b))
+      |> click("button[id='-']")
+      |> assert_text("#result", inspect(@integer_a - @integer_b))
     end
 
-    feature "*", %{session: session} do
-      session
+    test "*", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='*']"))
-      |> assert_text(css("#result"), inspect(@integer_a * @integer_b))
+      |> click("button[id='*']")
+      |> assert_text("#result", inspect(@integer_a * @integer_b))
     end
 
-    feature "/", %{session: session} do
-      session
+    test "/", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='/']"))
-      |> assert_text(css("#result"), inspect(@integer_a / @integer_b))
+      |> click("button[id='/']")
+      |> assert_text("#result", inspect(@integer_a / @integer_b))
     end
 
-    feature "++", %{session: session} do
-      session
+    test "++", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='++']"))
-      |> assert_text(css("#result"), inspect(@list_a ++ @list_b))
+      |> click("button[id='++']")
+      |> assert_text("#result", inspect(@list_a ++ @list_b))
     end
 
-    feature "--", %{session: session} do
-      session
+    test "--", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='--']"))
-      |> assert_text(css("#result"), inspect(@list_a -- @list_b))
+      |> click("button[id='--']")
+      |> assert_text("#result", inspect(@list_a -- @list_b))
     end
 
-    feature "and", %{session: session} do
-      session
+    test "and", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='and']"))
-      |> assert_text(css("#result"), inspect(wrap_term(@boolean_a) and wrap_term(@boolean_b)))
+      |> click("button[id='and']")
+      |> assert_text("#result", inspect(wrap_term(@boolean_a) and wrap_term(@boolean_b)))
     end
 
-    feature "&&", %{session: session} do
-      session
+    test "&&", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='&&']"))
-      |> assert_text(css("#result"), inspect(wrap_term(@boolean_a) && wrap_term(@boolean_b)))
+      |> click("button[id='&&']")
+      |> assert_text("#result", inspect(wrap_term(@boolean_a) && wrap_term(@boolean_b)))
     end
 
-    feature "or", %{session: session} do
-      session
+    test "or", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='or']"))
-      |> assert_text(css("#result"), inspect(wrap_term(@boolean_a) or wrap_term(@boolean_b)))
+      |> click("button[id='or']")
+      |> assert_text("#result", inspect(wrap_term(@boolean_a) or wrap_term(@boolean_b)))
     end
 
-    feature "||", %{session: session} do
-      session
+    test "||", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='||']"))
-      |> assert_text(css("#result"), inspect(wrap_term(@boolean_a) || wrap_term(@boolean_b)))
+      |> click("button[id='||']")
+      |> assert_text("#result", inspect(wrap_term(@boolean_a) || wrap_term(@boolean_b)))
     end
 
-    feature "not", %{session: session} do
-      session
+    test "not", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='not']"))
-      |> assert_text(css("#result"), inspect(not @boolean_a))
+      |> click("button[id='not']")
+      |> assert_text("#result", inspect(not @boolean_a))
     end
 
-    feature "!", %{session: session} do
-      session
+    test "!", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='!']"))
-      |> assert_text(css("#result"), inspect(!wrap_term(@boolean_a)))
+      |> click("button[id='!']")
+      |> assert_text("#result", inspect(!wrap_term(@boolean_a)))
     end
 
-    feature "in (list)", %{session: session} do
-      session
+    test "in (list)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='in (list)']"))
-      |> assert_text(css("#result"), inspect(@integer_a in @list_a))
+      |> click("button[id='in (list)']")
+      |> assert_text("#result", inspect(@integer_a in @list_a))
     end
 
-    feature "in (map)", %{session: session} do
-      session
+    test "in (map)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='in (map)']"))
-      |> assert_text(css("#result"), inspect({:a, @integer_a} in @map_a))
+      |> click("button[id='in (map)']")
+      |> assert_text("#result", inspect({:a, @integer_a} in @map_a))
     end
 
-    feature "in (range)", %{session: session} do
-      session
+    test "in (range)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='in (range)']"))
-      |> assert_text(css("#result"), inspect(@integer_b in @range_a))
+      |> click("button[id='in (range)']")
+      |> assert_text("#result", inspect(@integer_b in @range_a))
     end
 
-    feature "not in (list)", %{session: session} do
-      session
+    test "not in (list)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='not in (list)']"))
-      |> assert_text(css("#result"), inspect(@integer_a not in @list_a))
+      |> click("button[id='not in (list)']")
+      |> assert_text("#result", inspect(@integer_a not in @list_a))
     end
 
-    feature "not in (map)", %{session: session} do
-      session
+    test "not in (map)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='not in (map)']"))
-      |> assert_text(css("#result"), inspect({:a, @integer_a} not in @map_a))
+      |> click("button[id='not in (map)']")
+      |> assert_text("#result", inspect({:a, @integer_a} not in @map_a))
     end
 
-    feature "not in (range)", %{session: session} do
-      session
+    test "not in (range)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='not in (range)']"))
-      |> assert_text(css("#result"), inspect(@integer_b not in @range_a))
+      |> click("button[id='not in (range)']")
+      |> assert_text("#result", inspect(@integer_b not in @range_a))
     end
 
-    feature "@", %{session: session} do
-      session
+    test "@", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='@']"))
-      |> assert_text(css("#result"), inspect(@integer_c))
+      |> click("button[id='@']")
+      |> assert_text("#result", inspect(@integer_c))
     end
 
-    feature "..", %{session: session} do
-      session
+    test "..", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='..']"))
-      |> assert_text(css("#result"), inspect(@integer_a..@integer_b))
+      |> click("button[id='..']")
+      |> assert_text("#result", inspect(@integer_a..@integer_b))
     end
 
-    feature "..//", %{session: session} do
-      session
+    test "..//", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='..//']"))
-      |> assert_text(css("#result"), inspect(@integer_a..@integer_b//@integer_c))
+      |> click("button[id='..//']")
+      |> assert_text("#result", inspect(@integer_a..@integer_b//@integer_c))
     end
 
-    feature "<>", %{session: session} do
+    test "<>", %{page: page} do
       expected = inspect(@string_a <> @string_b)
 
-      session
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='<>']"))
-      |> assert_text(css("#result"), expected)
+      |> click("button[id='<>']")
+      |> assert_text("#result", expected)
     end
 
-    feature "|>", %{session: session} do
+    test "|>", %{page: page} do
       expected =
         @integer_a
         |> OperatorsPage.fun_1()
         |> OperatorsPage.fun_2()
 
-      session
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='|>']"))
-      |> assert_text(css("#result"), inspect(expected))
+      |> click("button[id='|>']")
+      |> assert_text("#result", inspect(expected))
     end
   end
 
   describe "special form operators" do
-    feature "^", %{session: session} do
-      session
+    test "^", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='^']"))
-      |> assert_text(css("#result"), inspect(@integer_b))
+      |> click("button[id='^']")
+      |> assert_text("#result", inspect(@integer_b))
     end
 
-    feature ". (remote call)", %{session: session} do
-      session
+    test ". (remote call)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='. (remote call)']"))
-      |> assert_text(css("#result"), inspect([@integer_a, @integer_b, @integer_c]))
+      |> click("button[id='. (remote call)']")
+      |> assert_text("#result", inspect([@integer_a, @integer_b, @integer_c]))
     end
 
-    feature ". (anonymous function call)", %{session: session} do
-      session
+    test ". (anonymous function call)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='. (anonymous function call)']"))
-      |> assert_text(css("#result"), inspect(@integer_c * @integer_c))
+      |> click("button[id='. (anonymous function call)']")
+      |> assert_text("#result", inspect(@integer_c * @integer_c))
     end
 
-    feature ". (map access)", %{session: session} do
-      session
+    test ". (map access)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='. (map access)']"))
-      |> assert_text(css("#result"), inspect(@integer_b))
+      |> click("button[id='. (map access)']")
+      |> assert_text("#result", inspect(@integer_b))
     end
 
-    feature "=", %{session: session} do
-      session
+    test "=", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='=']"))
-      |> assert_text(css("#result"), inspect(@integer_a))
+      |> click("button[id='=']")
+      |> assert_text("#result", inspect(@integer_a))
     end
 
-    feature "& (remote function)", %{session: session} do
-      session
+    test "& (remote function)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='& (remote function)']"))
-      |> assert_text(css("#result"), inspect([@integer_a, @integer_b, @integer_c]))
+      |> click("button[id='& (remote function)']")
+      |> assert_text("#result", inspect([@integer_a, @integer_b, @integer_c]))
     end
 
-    feature "& (local function)", %{session: session} do
-      session
+    test "& (local function)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='& (local function)']"))
-      |> assert_text(css("#result"), inspect(@integer_a * 4))
+      |> click("button[id='& (local function)']")
+      |> assert_text("#result", inspect(@integer_a * 4))
     end
 
-    feature "& (anonymous function)", %{session: session} do
-      session
+    test "& (anonymous function)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='& (anonymous function)']"))
-      |> assert_text(css("#result"), inspect(@integer_a * 5))
+      |> click("button[id='& (anonymous function)']")
+      |> assert_text("#result", inspect(@integer_a * 5))
     end
 
-    feature "::", %{session: session} do
+    test "::", %{page: page} do
       expected = inspect(<<@float_a::float>>)
 
-      session
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='::']"))
-      |> assert_text(css("#result"), expected)
+      |> click("button[id='::']")
+      |> assert_text("#result", expected)
     end
   end
 
   describe "comparison operators" do
-    feature "==", %{session: session} do
-      session
+    test "==", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='==']"))
-      |> assert_text(css("#result"), inspect(wrap_term(@integer_a) == wrap_term(@integer_a)))
+      |> click("button[id='==']")
+      |> assert_text("#result", inspect(wrap_term(@integer_a) == wrap_term(@integer_a)))
     end
 
-    feature "===", %{session: session} do
-      session
+    test "===", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='===']"))
-      |> assert_text(css("#result"), inspect(wrap_term(@integer_a) === wrap_term(@float_a)))
+      |> click("button[id='===']")
+      |> assert_text("#result", inspect(wrap_term(@integer_a) === wrap_term(@float_a)))
     end
 
-    feature "!=", %{session: session} do
-      session
+    test "!=", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='!=']"))
-      |> assert_text(css("#result"), inspect(@integer_a != @integer_b))
+      |> click("button[id='!=']")
+      |> assert_text("#result", inspect(@integer_a != @integer_b))
     end
 
-    feature "!==", %{session: session} do
-      session
+    test "!==", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='!==']"))
-      |> assert_text(css("#result"), inspect(@integer_a !== @float_a))
+      |> click("button[id='!==']")
+      |> assert_text("#result", inspect(@integer_a !== @float_a))
     end
 
-    feature "=== (map)", %{session: session} do
-      session
+    test "=== (map)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='=== (map)']"))
-      |> assert_text(css("#result"), inspect(@map_b === @map_a))
+      |> click("button[id='=== (map)']")
+      |> assert_text("#result", inspect(@map_b === @map_a))
     end
 
-    feature "== (map)", %{session: session} do
-      session
+    test "== (map)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='== (map)']"))
-      |> assert_text(css("#result"), inspect(@map_b == @map_a))
+      |> click("button[id='== (map)']")
+      |> assert_text("#result", inspect(@map_b == @map_a))
     end
 
-    feature "== (nested number)", %{session: session} do
-      session
+    test "== (nested number)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='== (nested number)']"))
-      |> assert_text(css("#result"), inspect(@list_integer == @list_float))
+      |> click("button[id='== (nested number)']")
+      |> assert_text("#result", inspect(@list_integer == @list_float))
     end
 
-    feature "== (non-text binaries)", %{session: session} do
-      session
+    test "== (non-text binaries)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='== (non-text binaries)']"))
-      |> assert_text(css("#result"), inspect({false, false, true, true}))
+      |> click("button[id='== (non-text binaries)']")
+      |> assert_text("#result", inspect({false, false, true, true}))
     end
 
-    feature "<", %{session: session} do
-      session
+    test "<", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='<']"))
-      |> assert_text(css("#result"), inspect(@integer_a < @integer_b))
+      |> click("button[id='<']")
+      |> assert_text("#result", inspect(@integer_a < @integer_b))
     end
 
-    feature ">", %{session: session} do
-      session
+    test ">", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='>']"))
-      |> assert_text(css("#result"), inspect(@integer_b > @integer_a))
+      |> click("button[id='>']")
+      |> assert_text("#result", inspect(@integer_b > @integer_a))
     end
 
-    feature "<=", %{session: session} do
-      session
+    test "<=", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='<=']"))
-      |> assert_text(css("#result"), inspect(@integer_a <= @integer_b))
+      |> click("button[id='<=']")
+      |> assert_text("#result", inspect(@integer_a <= @integer_b))
     end
 
-    feature ">=", %{session: session} do
-      session
+    test ">=", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='>=']"))
-      |> assert_text(css("#result"), inspect(@integer_b >= @integer_a))
+      |> click("button[id='>=']")
+      |> assert_text("#result", inspect(@integer_b >= @integer_a))
     end
 
-    feature "< (non-text binaries)", %{session: session} do
-      session
+    test "< (non-text binaries)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='< (non-text binaries)']"))
-      |> assert_text(css("#result"), inspect({false, true, false, true}))
+      |> click("button[id='< (non-text binaries)']")
+      |> assert_text("#result", inspect({false, true, false, true}))
     end
 
-    feature "< (atoms above U+FFFF)", %{session: session} do
-      session
+    test "< (atoms above U+FFFF)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='< (atoms above U+FFFF)']"))
-      |> assert_text(css("#result"), inspect({true, false, true, false}))
+      |> click("button[id='< (atoms above U+FFFF)']")
+      |> assert_text("#result", inspect({true, false, true, false}))
     end
   end
 
   describe "custom and overriden operators" do
-    feature "+++ (custom)", %{session: session} do
-      session
+    test "+++ (custom)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='+++ (custom)']"))
-      |> assert_text(css("#result"), inspect(@integer_a * @integer_b - @integer_a))
+      |> click("button[id='+++ (custom)']")
+      |> assert_text("#result", inspect(@integer_a * @integer_b - @integer_a))
     end
 
-    feature "+ (overriden)", %{session: session} do
-      session
+    test "+ (overriden)", %{page: page} do
+      page
       |> visit(OperatorsPage)
-      |> click(css("button[id='+ (overriden)']"))
-      |> assert_text(css("#result"), inspect(@integer_a * @integer_b))
+      |> click("button[id='+ (overriden)']")
+      |> assert_text("#result", inspect(@integer_a * @integer_b))
     end
   end
 end

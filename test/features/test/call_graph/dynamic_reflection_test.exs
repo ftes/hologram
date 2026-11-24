@@ -4,41 +4,41 @@ defmodule HologramFeatureTests.DynamicReflectionTest do
   alias HologramFeatureTests.CallGraph.DynamicReflectionPage
 
   describe "__struct__ on a module read from state" do
-    feature "through struct/2", %{session: session} do
-      session
+    test "through struct/2", %{page: page} do
+      page
       |> visit(DynamicReflectionPage)
-      |> click(button("Build with struct/2"))
-      |> assert_text(css("#result"), inspect({"default", 0}))
+      |> click_button("Build with struct/2")
+      |> assert_text("#result", inspect({"default", 0}))
     end
 
-    feature "through struct!/2", %{session: session} do
-      session
+    test "through struct!/2", %{page: page} do
+      page
       |> visit(DynamicReflectionPage)
-      |> click(button("Build with struct!/2"))
-      |> assert_text(css("#result"), inspect({"custom", 42}))
+      |> click_button("Build with struct!/2")
+      |> assert_text("#result", inspect({"custom", 42}))
     end
 
-    feature "through a dot", %{session: session} do
-      session
+    test "through a dot", %{page: page} do
+      page
       |> visit(DynamicReflectionPage)
-      |> click(button("Build with a dot"))
-      |> assert_text(css("#result"), inspect({"default", 0}))
+      |> click_button("Build with a dot")
+      |> assert_text("#result", inspect({"default", 0}))
     end
   end
 
   describe "schema reflection on a module read from state" do
-    feature "__changeset__/0", %{session: session} do
-      session
+    test "__changeset__/0", %{page: page} do
+      page
       |> visit(DynamicReflectionPage)
-      |> click(button("Read __changeset__/0"))
-      |> assert_text(css("#result"), inspect(%{name: :string}))
+      |> click_button("Read __changeset__/0")
+      |> assert_text("#result", inspect(%{name: :string}))
     end
 
-    feature "__schema__/1", %{session: session} do
-      session
+    test "__schema__/1", %{page: page} do
+      page
       |> visit(DynamicReflectionPage)
-      |> click(button("Read __schema__/1"))
-      |> assert_text(css("#result"), inspect([:name]))
+      |> click_button("Read __schema__/1")
+      |> assert_text("#result", inspect([:name]))
     end
   end
 end

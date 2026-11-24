@@ -23,7 +23,7 @@ defmodule HologramEcosystemTests.MixProject do
        ref: "6cc6eed1623dda243c008085086679197bb88501"},
       {:jason, "~> 1.0"},
       {:phoenix, "~> 1.7"},
-      {:wallaby, "~> 0.30", only: :test}
+      {:playwright, "~> 1.65.0-rc.4", hex: :playwright_ex, only: :test}
     ]
   end
 

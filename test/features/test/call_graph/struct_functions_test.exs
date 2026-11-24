@@ -18,18 +18,18 @@ defmodule HologramFeatureTests.StructFunctionsTest do
   ]
   @named_struct_functions [{StructFixture1, :__struct__, 0}, {StructFixture1, :__struct__, 1}]
 
-  feature "a module atom a command sends builds its struct in an action", %{session: session} do
-    session
+  test "a module atom a command sends builds its struct in an action", %{page: page} do
+    page
     |> visit(PushedModulePage)
-    |> click(button("Load"))
-    |> assert_text(css("#built"), "unnamed(built from a pushed module)")
+    |> click_button("Load")
+    |> assert_text("#built", "unnamed(built from a pushed module)")
   end
 
-  feature "a module atom in the initial state builds its struct in an action", %{session: session} do
-    session
+  test "a module atom in the initial state builds its struct in an action", %{page: page} do
+    page
     |> visit(UnnamedModulePage)
-    |> click(button("Build"))
-    |> assert_text(css("#built"), "unnamed(built from the module)")
+    |> click_button("Build")
+    |> assert_text("#built", "unnamed(built from the module)")
   end
 
   test "a page preloads the chunk of a struct type its client code builds" do

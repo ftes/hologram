@@ -12,6 +12,7 @@ App structure:
 
 ```sh
 mix deps.get
+mix playwright.install chromium
 mix test
 ```
 

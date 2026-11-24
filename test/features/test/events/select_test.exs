@@ -15,21 +15,21 @@ defmodule HologramFeatureTests.Events.SelectTest do
     """
   end
 
-  feature "text input", %{session: session} do
+  test "text input", %{page: page} do
     script = trigger_select_event_script("text_input")
 
-    session
+    page
     |> visit(SelectPage)
     |> execute_script(script)
-    |> assert_text(css("#result"), ~r/\{:text_input, %\{event: %\{value: "am 1 Holo"\}\}\}/)
+    |> assert_text("#result", ~r/\{:text_input, %\{event: %\{value: "am 1 Holo"\}\}\}/)
   end
 
-  feature "textarea", %{session: session} do
+  test "textarea", %{page: page} do
     script = trigger_select_event_script("textarea")
 
-    session
+    page
     |> visit(SelectPage)
     |> execute_script(script)
-    |> assert_text(css("#result"), ~r/\{:textarea, %\{event: %\{value: "am 2 Holo"\}\}\}/)
+    |> assert_text("#result", ~r/\{:textarea, %\{event: %\{value: "am 2 Holo"\}\}\}/)
   end
 end

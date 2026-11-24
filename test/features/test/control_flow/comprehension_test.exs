@@ -34,73 +34,73 @@ defmodule HologramFeatureTests.ControlFlow.ComprehensionTest do
   # - mapper: uses Enum.into/2 to insert the comprehension result into a collectable
 
   describe "enumerable generator" do
-    feature "can use variables bound by an earlier generator", %{session: session} do
-      session
+    test "can use variables bound by an earlier generator", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Dependent generator"))
-      |> assert_text(css("#result"), "[{1, 1}, {1, 11}, {2, 2}, {2, 12}]")
+      |> click_button("Dependent generator")
+      |> assert_text("#result", "[{1, 1}, {1, 11}, {2, 2}, {2, 12}]")
     end
 
-    feature "matches a struct pattern", %{session: session} do
-      session
+    test "matches a struct pattern", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Generator with struct pattern"))
-      |> assert_text(css("#result"), "[10, 20]")
+      |> click_button("Generator with struct pattern")
+      |> assert_text("#result", "[10, 20]")
     end
 
-    feature "ignores items that don't match a struct pattern", %{session: session} do
-      session
+    test "ignores items that don't match a struct pattern", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Struct filtering in generator"))
-      |> assert_text(css("#result"), "[1, 3]")
+      |> click_button("Struct filtering in generator")
+      |> assert_text("#result", "[1, 3]")
     end
   end
 
   describe "bitstring generator" do
-    feature "iterates in pattern-sized steps", %{session: session} do
-      session
+    test "iterates in pattern-sized steps", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Basic bitstring generator"))
-      |> assert_text(css("#result"), "[5, 6, 7]")
+      |> click_button("Basic bitstring generator")
+      |> assert_text("#result", "[5, 6, 7]")
     end
 
-    feature "binds multiple segments per step", %{session: session} do
-      session
+    test "binds multiple segments per step", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Bitstring generator with multi-segment pattern"))
-      |> assert_text(css("#result"), "[{1, 2}, {3, 4}]")
+      |> click_button("Bitstring generator with multi-segment pattern")
+      |> assert_text("#result", "[{1, 2}, {3, 4}]")
     end
 
-    feature "stops iterating at the first non-matching prefix", %{session: session} do
-      session
+    test "stops iterating at the first non-matching prefix", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Bitstring generator with prefix mismatch"))
-      |> assert_text(css("#result"), "[2]")
+      |> click_button("Bitstring generator with prefix mismatch")
+      |> assert_text("#result", "[2]")
     end
 
-    feature "discards leftover bits that don't fill the pattern", %{session: session} do
-      session
+    test "discards leftover bits that don't fill the pattern", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Bitstring generator with leftover bits"))
-      |> assert_text(css("#result"), "[1, 2]")
+      |> click_button("Bitstring generator with leftover bits")
+      |> assert_text("#result", "[1, 2]")
     end
 
-    feature "composes with filters", %{session: session} do
-      session
+    test "composes with filters", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Bitstring generator with filter"))
-      |> assert_text(css("#result"), "[1, 3]")
+      |> click_button("Bitstring generator with filter")
+      |> assert_text("#result", "[1, 3]")
     end
   end
 
   describe "filters" do
-    feature "placed between generators prunes the branch before the next generator runs", %{
-      session: session
+    test "placed between generators prunes the branch before the next generator runs", %{
+      page: page
     } do
-      session
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Guarding filter"))
-      |> assert_text(css("#result"), "[1, 2, 3]")
+      |> click_button("Guarding filter")
+      |> assert_text("#result", "[1, 2, 3]")
     end
   end
 
@@ -109,90 +109,90 @@ defmodule HologramFeatureTests.ControlFlow.ComprehensionTest do
     # Hologram.Commons.KernelUtils.inspect/1, which sorts map keys, while Kernel.inspect/1
     # prints them in the VM's per-boot order. Building the expectation with inspect/1 here
     # would pass or fail depending on the boot.
-    feature "keeps a map and its subset, which are distinct items", %{session: session} do
-      session
+    test "keeps a map and its subset, which are distinct items", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Unique with a map and its subset"))
-      |> assert_text(css("#result"), ~s([%{a: 1, b: 2}, %{a: 1}]))
+      |> click_button("Unique with a map and its subset")
+      |> assert_text("#result", ~s([%{a: 1, b: 2}, %{a: 1}]))
     end
   end
 
   describe "reducer" do
-    feature "accumulates over a single enumerable generator", %{session: session} do
-      session
+    test "accumulates over a single enumerable generator", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with single generator"))
-      |> assert_text(css("#result"), "6")
+      |> click_button("Reducer with single generator")
+      |> assert_text("#result", "6")
     end
 
-    feature "accumulates over a bitstring generator", %{session: session} do
-      session
+    test "accumulates over a bitstring generator", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with bitstring generator"))
-      |> assert_text(css("#result"), "9")
+      |> click_button("Reducer with bitstring generator")
+      |> assert_text("#result", "9")
     end
 
-    feature "accumulates over multiple enumerable generators", %{session: session} do
-      session
+    test "accumulates over multiple enumerable generators", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with multiple generators"))
-      |> assert_text(css("#result"), "90")
+      |> click_button("Reducer with multiple generators")
+      |> assert_text("#result", "90")
     end
 
-    feature "returns the initial value when the enumerable generator is empty", %{
-      session: session
+    test "returns the initial value when the enumerable generator is empty", %{
+      page: page
     } do
-      session
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with empty generator"))
-      |> assert_text(css("#result"), "100")
+      |> click_button("Reducer with empty generator")
+      |> assert_text("#result", "100")
     end
 
-    feature "returns the initial value when filters reject all items", %{session: session} do
-      session
+    test "returns the initial value when filters reject all items", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with all-rejecting filter"))
-      |> assert_text(css("#result"), "200")
+      |> click_button("Reducer with all-rejecting filter")
+      |> assert_text("#result", "200")
     end
 
-    feature "filters limit which items update the accumulator", %{session: session} do
-      session
+    test "filters limit which items update the accumulator", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with selective filter"))
-      |> assert_text(css("#result"), "306")
+      |> click_button("Reducer with selective filter")
+      |> assert_text("#result", "306")
     end
 
-    feature "dispatches to the clause matching the accumulator", %{session: session} do
-      session
+    test "dispatches to the clause matching the accumulator", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with clause dispatch"))
-      |> assert_text(css("#result"), "123")
+      |> click_button("Reducer with clause dispatch")
+      |> assert_text("#result", "123")
     end
 
-    feature "dispatches to the clause whose guards pass", %{session: session} do
-      session
+    test "dispatches to the clause whose guards pass", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with guard dispatch"))
-      |> assert_text(css("#result"), "33")
+      |> click_button("Reducer with guard dispatch")
+      |> assert_text("#result", "33")
     end
 
-    feature "reducer clauses can access variables from comprehension outer scope", %{
-      session: session
+    test "reducer clauses can access variables from comprehension outer scope", %{
+      page: page
     } do
-      session
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with outer scope access"))
-      |> assert_text(css("#result"), "32")
+      |> click_button("Reducer with outer scope access")
+      |> assert_text("#result", "32")
     end
 
-    feature "raises CaseClauseError when no clause matches the accumulator", %{session: session} do
-      assert_client_error session,
+    test "raises CaseClauseError when no clause matches the accumulator", %{page: page} do
+      assert_client_error page,
                           CaseClauseError,
                           "no case clause matching:\n\n    0\n",
                           fn ->
-                            session
+                            page
                             |> visit(ComprehensionPage)
-                            |> click(button("Reducer with unmatched accumulator"))
+                            |> click_button("Reducer with unmatched accumulator")
                           end
     end
 
@@ -201,12 +201,12 @@ defmodule HologramFeatureTests.ControlFlow.ComprehensionTest do
     # Interpreter.#inspectMap/2 in assets/js/interpreter.mjs). Both sides render structs as
     # plain maps for now - the page inspects with Hologram.Commons.KernelUtils.inspect/1,
     # which mirrors the client, so server and client agree on this text.
-    feature "matches a struct pattern accumulator", %{session: session} do
-      session
+    test "matches a struct pattern accumulator", %{page: page} do
+      page
       |> visit(ComprehensionPage)
-      |> click(button("Reducer with struct accumulator"))
+      |> click_button("Reducer with struct accumulator")
       |> assert_text(
-        css("#result"),
+        "#result",
         ~s(%{__struct__: HologramFeatureTests.StructFixture1, name: "acc", value: 6})
       )
     end

@@ -2,87 +2,87 @@ defmodule HologramFeatureTests.RegularExpressionsTest do
   use HologramFeatureTests.TestCase, async: true
   alias HologramFeatureTests.RegularExpressionsPage
 
-  feature "client-sent regex", %{session: session} do
-    session
+  test "client-sent regex", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='client-sent regex']"))
-    |> assert_text(css("#result"), inspect(["gggh"]))
+    |> click("button[id='client-sent regex']")
+    |> assert_text("#result", inspect(["gggh"]))
   end
 
-  feature "dynamic compilation", %{session: session} do
-    session
+  test "dynamic compilation", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='dynamic compilation']"))
-    |> assert_text(css("#result"), inspect(["bb"]))
+    |> click("button[id='dynamic compilation']")
+    |> assert_text("#result", inspect(["bb"]))
   end
 
-  feature "initial state regex", %{session: session} do
-    session
+  test "initial state regex", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='initial state regex']"))
-    |> assert_text(css("#result"), inspect(["iij"]))
+    |> click("button[id='initial state regex']")
+    |> assert_text("#result", inspect(["iij"]))
   end
 
-  feature "match operator", %{session: session} do
-    session
+  test "match operator", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='match operator']"))
-    |> assert_text(css("#result"), inspect(true))
+    |> click("button[id='match operator']")
+    |> assert_text("#result", inspect(true))
   end
 
-  feature "named captures", %{session: session} do
-    session
+  test "named captures", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='named captures']"))
-    |> assert_text(css("#result"), inspect(%{"number" => "42"}))
+    |> click("button[id='named captures']")
+    |> assert_text("#result", inspect(%{"number" => "42"}))
   end
 
-  feature "regex match?", %{session: session} do
-    session
+  test "regex match?", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='regex match?']"))
-    |> assert_text(css("#result"), inspect(false))
+    |> click("button[id='regex match?']")
+    |> assert_text("#result", inspect(false))
   end
 
-  feature "regex replace", %{session: session} do
-    session
+  test "regex replace", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='regex replace']"))
-    |> assert_text(css("#result"), inspect("aXc"))
+    |> click("button[id='regex replace']")
+    |> assert_text("#result", inspect("aXc"))
   end
 
-  feature "regex run", %{session: session} do
-    session
+  test "regex run", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='regex run']"))
-    |> assert_text(css("#result"), inspect(["abb", "bb"]))
+    |> click("button[id='regex run']")
+    |> assert_text("#result", inspect(["abb", "bb"]))
   end
 
-  feature "regex scan", %{session: session} do
-    session
+  test "regex scan", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='regex scan']"))
-    |> assert_text(css("#result"), inspect([["1"], ["3"]]))
+    |> click("button[id='regex scan']")
+    |> assert_text("#result", inspect([["1"], ["3"]]))
   end
 
-  feature "regex split", %{session: session} do
-    session
+  test "regex split", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='regex split']"))
-    |> assert_text(css("#result"), inspect(["1", "2", "3"]))
+    |> click("button[id='regex split']")
+    |> assert_text("#result", inspect(["1", "2", "3"]))
   end
 
-  feature "server-sent regex", %{session: session} do
-    session
+  test "server-sent regex", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='server-sent regex']"))
-    |> assert_text(css("#result"), inspect(["eef"]))
+    |> click("button[id='server-sent regex']")
+    |> assert_text("#result", inspect(["eef"]))
   end
 
-  feature "unicode property escape", %{session: session} do
-    session
+  test "unicode property escape", %{page: page} do
+    page
     |> visit(RegularExpressionsPage)
-    |> click(css("button[id='unicode property escape']"))
-    |> assert_text(css("#result"), inspect(["zażółć"]))
+    |> click("button[id='unicode property escape']")
+    |> assert_text("#result", inspect(["zażółć"]))
   end
 end

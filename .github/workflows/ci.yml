@@ -456,11 +456,8 @@ jobs:
           # Run feature tests on latest LTS version only.
           # Must match .tool-versions for dev/prod/CI parity.
           - "24.13.0"
-        # The suite is split across runners rather than run concurrently within one,
-        # because a browser-driven suite is what exhausted a single runner before -
-        # see the max_cases note in test/features/test/test_helper.exs. Each partition
-        # is its own runner running one browser at a time, so per-runner load is
-        # unchanged no matter how many partitions there are.
+        # The suite is split across runners, and each partition runs its async modules on
+        # Playwright.Test's default workers, a browser each for half the runner's cores.
         #
         # Two bounds pin the count. Below, no partition count beats ~2 minutes:
         # operators_test.exs holds 44 of the suite's ~600 tests and a single file
@@ -494,6 +491,9 @@ jobs:
             https://cdn.jsdelivr.net/hex
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          # Playwright.Test.GitHubFormatter annotates the failures; the problem matchers would
+          # annotate each one again.
+          disable_problem_matchers: true
 
       # Step: Checkout the code.
       - name: Checkout code
@@ -624,31 +624,26 @@ jobs:
         if: ${{ env.IS_FIRST_PARTITION == 'true' }}
         run: mix holo.test.check_file_names test
 
+      # Step: Install the browser the tests drive, with its system dependencies.
+      - name: Install Playwright browser
+        run: mix playwright.install chromium --with-deps
+
       # Step: Execute this partition's share of the feature tests app Elixir tests.
       # Mix sorts the test files and deals them round-robin across the partitions,
       # selecting this runner's share with MIX_TEST_PARTITION, so new test files are
       # picked up without a list to maintain. Must stay in sync with the partition
       # matrix above.
       - name: Run feature tests app Elixir tests
-        run: mix test --warnings-as-errors --partitions 8
+        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh --partitions 8
 
-      # Step: Archive the browser screenshots of tests that failed.
-      - name: Archive fail screenshots
+      # Step: Archive the traces and screenshots of tests that failed.
+      - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
-        if: success() || failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: fail-screenshots-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}-partition-${{ matrix.partition }}
-          path: test/features/tmp/screenshots
-
-      # Step: Archive the ChromeDriver logs of a run that failed or recovered from a browser hang.
-      - name: Archive ChromeDriver logs
-        # Execute the step if the job has failed or a browser hang was reported, but don't execute it if the job has been canceled.
-        if: ${{ !cancelled() && (failure() || hashFiles('test/features/tmp/chromedriver/hangs.txt') != '') }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: chromedriver-logs-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}-partition-${{ matrix.partition }}
-          path: test/features/tmp/chromedriver
+          name: test-results-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}-partition-${{ matrix.partition }}
+          path: test/features/test-results
 
   feature_tests_https:
     runs-on: ubuntu-latest
@@ -685,6 +680,9 @@ jobs:
             https://cdn.jsdelivr.net/hex
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          # Playwright.Test.GitHubFormatter annotates the failures; the problem matchers would
+          # annotate each one again.
+          disable_problem_matchers: true
 
       # Step: Checkout the code.
       - name: Checkout code
@@ -744,29 +742,24 @@ jobs:
       - name: Check feature tests app project compiles without warnings
         run: mix compile --all-warnings --warnings-as-errors
 
+      # Step: Install the browser the tests drive, with its system dependencies.
+      - name: Install Playwright browser
+        run: mix playwright.install chromium --with-deps
+
       # Step: Execute the feature tests that touch the SSE stream, over HTTP/2. The rest of
       # the suite doesn't touch the transport and runs over HTTP/1.1 in feature_tests. The
       # codebase checks run there too, so this job repeats none of them.
       - name: Run feature tests app Elixir tests over HTTPS
-        run: mix test --warnings-as-errors test/commands_test.exs test/realtime_test.exs test/sse_response_test.exs
+        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh test/commands_test.exs test/realtime_test.exs test/sse_response_test.exs
 
-      # Step: Archive the browser screenshots of tests that failed.
-      - name: Archive fail screenshots
+      # Step: Archive the traces and screenshots of tests that failed.
+      - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
-        if: success() || failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: https-fail-screenshots-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/features/tmp/screenshots
-
-      # Step: Archive the ChromeDriver logs of a run that failed or recovered from a browser hang.
-      - name: Archive ChromeDriver logs
-        # Execute the step if the job has failed or a browser hang was reported, but don't execute it if the job has been canceled.
-        if: ${{ !cancelled() && (failure() || hashFiles('test/features/tmp/chromedriver/hangs.txt') != '') }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: https-chromedriver-logs-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/features/tmp/chromedriver
+          name: https-test-results-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
+          path: test/features/test-results
 
   cluster_tests:
     runs-on: ubuntu-latest
@@ -806,6 +799,9 @@ jobs:
             https://cdn.jsdelivr.net/hex
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          # Playwright.Test.GitHubFormatter annotates the failures; the problem matchers would
+          # annotate each one again.
+          disable_problem_matchers: true
 
       # Step: Checkout the code.
       - name: Checkout code
@@ -911,27 +907,23 @@ jobs:
         if: ${{ env.IS_HIGHEST_MATRIX_COMBINATION == 'true' }}
         run: mix holo.test.check_file_names test
 
+      # Step: Install the browser the tests drive, with its system dependencies.
+      - name: Install Playwright browser
+        run: mix playwright.install chromium --with-deps
+
       # Step: Execute cluster tests app Elixir tests.
       - name: Run cluster tests app Elixir tests
-        run: mix test --warnings-as-errors
+        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
 
-      # Step: Archive the browser screenshots of tests that failed.
-      - name: Archive fail screenshots
+      # Step: Archive the traces and screenshots of tests that failed.
+      - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
-        if: success() || failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: cluster-fail-screenshots-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/cluster/tmp/screenshots
+          name: cluster-test-results-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
+          path: test/cluster/test-results
 
-      # Step: Archive the ChromeDriver logs of a run that failed or recovered from a browser hang.
-      - name: Archive ChromeDriver logs
-        # Execute the step if the job has failed or a browser hang was reported, but don't execute it if the job has been canceled.
-        if: ${{ !cancelled() && (failure() || hashFiles('test/cluster/tmp/chromedriver/hangs.txt') != '') }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: cluster-chromedriver-logs-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/cluster/tmp/chromedriver
   cowboy_tests:
     runs-on: ubuntu-latest
     # Started once the lib checks have ended, so that 18 jobs start together and none waits on
@@ -970,6 +962,9 @@ jobs:
             https://cdn.jsdelivr.net/hex
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          # Playwright.Test.GitHubFormatter annotates the failures; the problem matchers would
+          # annotate each one again.
+          disable_problem_matchers: true
 
       # Step: Checkout the code.
       - name: Checkout code
@@ -1075,27 +1070,23 @@ jobs:
         if: ${{ env.IS_HIGHEST_MATRIX_COMBINATION == 'true' }}
         run: mix holo.test.check_file_names test
 
+      # Step: Install the browser the tests drive, with its system dependencies.
+      - name: Install Playwright browser
+        run: mix playwright.install chromium --with-deps
+
       # Step: Execute cowboy tests app Elixir tests.
       - name: Run cowboy tests app Elixir tests
-        run: mix test --warnings-as-errors
+        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
 
-      # Step: Archive the browser screenshots of tests that failed.
-      - name: Archive fail screenshots
+      # Step: Archive the traces and screenshots of tests that failed.
+      - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
-        if: success() || failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: cowboy-fail-screenshots-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/cowboy/tmp/screenshots
+          name: cowboy-test-results-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
+          path: test/cowboy/test-results
 
-      # Step: Archive the ChromeDriver logs of a run that failed or recovered from a browser hang.
-      - name: Archive ChromeDriver logs
-        # Execute the step if the job has failed or a browser hang was reported, but don't execute it if the job has been canceled.
-        if: ${{ !cancelled() && (failure() || hashFiles('test/cowboy/tmp/chromedriver/hangs.txt') != '') }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: cowboy-chromedriver-logs-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/cowboy/tmp/chromedriver
   ecosystem_tests:
     runs-on: ubuntu-latest
     # Started once the lib checks have ended, so that 18 jobs start together and none waits on
@@ -1134,6 +1125,9 @@ jobs:
             https://cdn.jsdelivr.net/hex
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          # Playwright.Test.GitHubFormatter annotates the failures; the problem matchers would
+          # annotate each one again.
+          disable_problem_matchers: true
 
       # Step: Checkout the code.
       - name: Checkout code
@@ -1239,27 +1233,23 @@ jobs:
         if: ${{ env.IS_HIGHEST_MATRIX_COMBINATION == 'true' }}
         run: mix holo.test.check_file_names test
 
+      # Step: Install the browser the tests drive, with its system dependencies.
+      - name: Install Playwright browser
+        run: mix playwright.install chromium --with-deps
+
       # Step: Execute ecosystem tests app Elixir tests.
       - name: Run ecosystem tests app Elixir tests
-        run: mix test --warnings-as-errors
+        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
 
-      # Step: Archive the browser screenshots of tests that failed.
-      - name: Archive fail screenshots
+      # Step: Archive the traces and screenshots of tests that failed.
+      - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
-        if: success() || failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: ecosystem-fail-screenshots-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/ecosystem/tmp/screenshots
+          name: ecosystem-test-results-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
+          path: test/ecosystem/test-results
 
-      # Step: Archive the ChromeDriver logs of a run that failed or recovered from a browser hang.
-      - name: Archive ChromeDriver logs
-        # Execute the step if the job has failed or a browser hang was reported, but don't execute it if the job has been canceled.
-        if: ${{ !cancelled() && (failure() || hashFiles('test/ecosystem/tmp/chromedriver/hangs.txt') != '') }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: ecosystem-chromedriver-logs-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/ecosystem/tmp/chromedriver
   umbrella_tests:
     runs-on: ubuntu-latest
     # Started once the lib checks have ended, so that 18 jobs start together and none waits on
@@ -1298,6 +1288,9 @@ jobs:
             https://cdn.jsdelivr.net/hex
           elixir-version: ${{ matrix.elixir }}
           otp-version: ${{ matrix.otp }}
+          # Playwright.Test.GitHubFormatter annotates the failures; the problem matchers would
+          # annotate each one again.
+          disable_problem_matchers: true
 
       # Step: Checkout the code.
       - name: Checkout code
@@ -1412,24 +1405,19 @@ jobs:
         if: ${{ env.IS_HIGHEST_MATRIX_COMBINATION == 'true' }}
         run: mix holo.test.check_file_names apps/app_1/test
 
+      # Step: Install the browser the tests drive, with its system dependencies.
+      - name: Install Playwright browser
+        run: mix playwright.install chromium --with-deps
+
       # Step: Execute umbrella tests app Elixir tests.
       - name: Run umbrella tests app Elixir tests
-        run: mix test --warnings-as-errors
+        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
 
-      # Step: Archive the browser screenshots of tests that failed.
-      - name: Archive fail screenshots
+      # Step: Archive the traces and screenshots of tests that failed.
+      - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
-        if: success() || failure()
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v7
         with:
-          name: umbrella-fail-screenshots-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/umbrella/apps/app_1/tmp/screenshots
-
-      # Step: Archive the ChromeDriver logs of a run that failed or recovered from a browser hang.
-      - name: Archive ChromeDriver logs
-        # Execute the step if the job has failed or a browser hang was reported, but don't execute it if the job has been canceled.
-        if: ${{ !cancelled() && (failure() || hashFiles('test/umbrella/apps/app_1/tmp/chromedriver/hangs.txt') != '') }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: umbrella-chromedriver-logs-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
-          path: test/umbrella/apps/app_1/tmp/chromedriver
+          name: umbrella-test-results-${{ matrix.elixir }}-${{ matrix.otp }}-${{ matrix.node }}
+          path: test/umbrella/apps/app_1/test-results

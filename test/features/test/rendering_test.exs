@@ -13,163 +13,163 @@ defmodule HologramFeatureTests.RenderingTest do
   alias HologramFeatureTests.Rendering.StateDefaultsPage
   alias HologramFeatureTests.Rendering.UndefinedVarPage
 
-  feature "root element without attributes", %{session: session} do
-    session
+  test "root element without attributes", %{page: page} do
+    page
     |> visit(Page1)
-    |> assert_has(css("html"))
+    |> assert_has("html")
   end
 
-  feature "root element with single attribute", %{session: session} do
-    session
+  test "root element with single attribute", %{page: page} do
+    page
     |> visit(Page2)
-    |> assert_has(css("html[attr_1='value_1']"))
+    |> assert_has("html[attr_1='value_1']")
   end
 
-  feature "root element with multiple attributes", %{session: session} do
-    session
+  test "root element with multiple attributes", %{page: page} do
+    page
     |> visit(Page3)
-    |> assert_has(css("html[attr_1='value_1']"))
-    |> assert_has(css("html[attr_2='value_2']"))
+    |> assert_has("html[attr_1='value_1']")
+    |> assert_has("html[attr_2='value_2']")
   end
 
   # The length is what pins the fix. The text is repaired by the client's own render on boot, so it
   # reads correctly either way, but the length was measured on the server and shipped, so it still
   # says what the server saw. Escaped, "a & b < c" would reach the component as "a &amp; b &lt; c"
   # and the count would be 16.
-  feature "component prop written as text is the string the template wrote", %{session: session} do
-    session
+  test "component prop written as text is the string the template wrote", %{page: page} do
+    page
     |> visit(Page4)
-    |> assert_text(css("#text"), "a & b < c")
-    |> assert_text(css("#length"), "9")
+    |> assert_text("#text", "a & b < c")
+    |> assert_text("#length", "9")
   end
 
   describe "props on the component struct" do
     # The prop is changed after mount and then read in an action. A component that copied the prop
     # into state during init would answer 0 here forever, which is the trap this closes.
-    feature "action reads the prop the latest render passed", %{session: session} do
-      session
+    test "action reads the prop the latest render passed", %{page: page} do
+      page
       |> visit(PropsOnStructPage, n: 1)
-      |> click(button("Increment"))
-      |> click(button("Increment"))
-      |> assert_text(css("#component_1_prop_count"), "2")
-      |> click(css("#component_1_read_prop"))
-      |> assert_text(css("#component_1_result"), "2")
+      |> click_button("Increment")
+      |> click_button("Increment")
+      |> assert_text("#component_1_prop_count", "2")
+      |> click("#component_1_read_prop")
+      |> assert_text("#component_1_result", "2")
     end
 
-    feature "action reads the prop on the first render", %{session: session} do
-      session
+    test "action reads the prop on the first render", %{page: page} do
+      page
       |> visit(PropsOnStructPage, n: 1)
-      |> click(css("#component_1_read_prop"))
-      |> assert_text(css("#component_1_result"), "0")
+      |> click("#component_1_read_prop")
+      |> assert_text("#component_1_result", "0")
     end
 
     # Component 2 is not in the tree when the page loads, so it goes down the client's init/2 path
     # rather than being initialized on the server.
-    feature "action reads the prop of a component added after load", %{session: session} do
-      session
+    test "action reads the prop of a component added after load", %{page: page} do
+      page
       |> visit(PropsOnStructPage, n: 1)
-      |> click(button("Increment"))
-      |> click(button("Increment"))
-      |> click(button("Show component 2"))
-      |> assert_text(css("#component_2_prop_count"), "2")
-      |> click(css("#component_2_read_prop"))
-      |> assert_text(css("#component_2_result"), "2")
+      |> click_button("Increment")
+      |> click_button("Increment")
+      |> click_button("Show component 2")
+      |> assert_text("#component_2_prop_count", "2")
+      |> click("#component_2_read_prop")
+      |> assert_text("#component_2_result", "2")
     end
 
-    feature "page action reads a URL param", %{session: session} do
-      session
+    test "page action reads a URL param", %{page: page} do
+      page
       |> visit(PropsOnStructPage, n: 7)
-      |> click(button("Read param"))
-      |> assert_text(css("#page_result"), "7")
+      |> click_button("Read param")
+      |> assert_text("#page_result", "7")
     end
   end
 
   describe "default initialization" do
     # Component 1 is initialized on the server and component 2 on the client, and the component
     # defines neither init/3 nor init/2, so both go through the defaults.
-    feature "component without init callbacks renders on the server and on the client", %{
-      session: session
+    test "component without init callbacks renders on the server and on the client", %{
+      page: page
     } do
-      session
+      page
       |> visit(DefaultInitPage)
-      |> assert_text(css("#component_1"), "first")
-      |> click(button("Show component 2"))
-      |> assert_text(css("#component_2"), "second")
+      |> assert_text("#component_1", "first")
+      |> click_button("Show component 2")
+      |> assert_text("#component_2", "second")
     end
   end
 
   describe "declared state defaults" do
-    feature "seed a page's state on the server", %{session: session} do
-      session
+    test "seed a page's state on the server", %{page: page} do
+      page
       |> visit(StateDefaultsPage)
-      |> assert_text(css("#page_greeting"), "page default")
+      |> assert_text("#page_greeting", "page default")
     end
 
-    feature "seed a layout's state on the server", %{session: session} do
-      session
+    test "seed a layout's state on the server", %{page: page} do
+      page
       |> visit(StateDefaultsPage)
-      |> assert_text(css("#layout_greeting"), "layout default")
+      |> assert_text("#layout_greeting", "layout default")
     end
 
-    feature "seed the state of a component initialized on the server", %{session: session} do
-      session
+    test "seed the state of a component initialized on the server", %{page: page} do
+      page
       |> visit(StateDefaultsPage)
-      |> assert_text(css("#component_1"), "server component default")
+      |> assert_text("#component_1", "server component default")
     end
 
     # Component 2 isn't in the tree when the page loads, so the client renderer seeds its state.
-    feature "seed the state of a component initialized on the client", %{session: session} do
-      session
+    test "seed the state of a component initialized on the client", %{page: page} do
+      page
       |> visit(StateDefaultsPage)
-      |> click(button("Show component 2"))
-      |> assert_text(css("#component_2"), "client component default")
+      |> click_button("Show component 2")
+      |> assert_text("#component_2", "client component default")
     end
   end
 
   describe "prop validation" do
     # The component is reached through a spread, so the compiler can't judge the usage and the
     # client renderer is what enforces the contract.
-    feature "renders when every prop honours its declaration", %{session: session} do
-      session
+    test "renders when every prop honours its declaration", %{page: page} do
+      page
       |> visit(PropValidationPage)
-      |> click(button("Render valid"))
-      |> assert_text(css("#prop_validation_result"), "my_label / small")
+      |> click_button("Render valid")
+      |> assert_text("#prop_validation_result", "my_label / small")
     end
 
-    feature "raises when a required prop is missing", %{session: session} do
+    test "raises when a required prop is missing", %{page: page} do
       expected_msg =
         ~s/component "#{inspect(PropValidationComponent)}" is missing required prop "label", / <>
           ~s/rendered from "#{inspect(PropValidationPage)}"/
 
-      assert_client_error session, Hologram.PropError, expected_msg, fn ->
-        session
+      assert_client_error page, Hologram.PropError, expected_msg, fn ->
+        page
         |> visit(PropValidationPage)
-        |> click(button("Render without required prop"))
+        |> click_button("Render without required prop")
       end
     end
 
-    feature "raises when a prop value is outside its :values list", %{session: session} do
+    test "raises when a prop value is outside its :values list", %{page: page} do
       expected_msg =
         ~s/prop "size" of component "#{inspect(PropValidationComponent)}" must be one of / <>
           ~s/[:small, :large], got: :huge, rendered from "#{inspect(PropValidationPage)}"/
 
-      assert_client_error session, Hologram.PropError, expected_msg, fn ->
-        session
+      assert_client_error page, Hologram.PropError, expected_msg, fn ->
+        page
         |> visit(PropValidationPage)
-        |> click(button("Render with invalid value"))
+        |> click_button("Render with invalid value")
       end
     end
   end
 
-  feature "raises when a template uses a var it doesn't have", %{session: session} do
+  test "raises when a template uses a var it doesn't have", %{page: page} do
     expected_msg =
       ~s/undefined var @missing in the template of "#{inspect(UndefinedVarComponent)}", / <>
         "available vars: @label"
 
-    assert_client_error session, Hologram.MisuseError, expected_msg, fn ->
-      session
+    assert_client_error page, Hologram.MisuseError, expected_msg, fn ->
+      page
       |> visit(UndefinedVarPage)
-      |> click(button("Show"))
+      |> click_button("Show")
     end
   end
 end

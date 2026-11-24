@@ -46,8 +46,8 @@ defmodule HologramClusterTests.TopologyTest do
     assert serving_upstreams == expected_upstreams
   end
 
-  feature "a browser loads a page through the proxy", %{session: session} do
-    session
+  test "a browser loads a page through the proxy", %{page: page} do
+    page
     |> visit("/init-subscribe")
     |> assert_text("Received:")
   end

@@ -23,7 +23,7 @@ export default class HologramBoxedError extends Error {
     // try/rescue/catch machinery. They are defined as non-enumerable because
     // extra enumerable own-properties on a thrown Error blank out the message
     // that the browser's uncaught-error reporting surfaces (and that
-    // Wallaby/chromedriver capture).
+    // the browser tests capture).
     Object.defineProperty(this, "kind", {
       value: kind,
       writable: true,

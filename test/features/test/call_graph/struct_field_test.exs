@@ -7,10 +7,10 @@ defmodule HologramFeatureTests.StructFieldTest do
 
   @note_to_string {String.Chars.HologramFeatureTests.StructFieldNoteFixture, :to_string, 1}
 
-  feature "the title taken out of the struct renders", %{session: session} do
-    session
+  test "the title taken out of the struct renders", %{page: page} do
+    page
     |> visit(StructFieldPage)
-    |> assert_text(css("#title"), "title")
+    |> assert_text("#title", "title")
   end
 
   test "the implementation of the struct in another field is in a chunk of the struct's type and in no other bundle" do

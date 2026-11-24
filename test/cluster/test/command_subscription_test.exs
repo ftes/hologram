@@ -20,13 +20,13 @@ defmodule HologramClusterTests.CommandSubscriptionTest do
     @feature_name "subscribing from a boot-time command delivers broadcasts " <>
                     "(command #{placement} to the stream)"
 
-    feature @feature_name,
-            %{session: session, sse_peer: sse_peer, other_peer: other_peer} do
+    test @feature_name,
+         %{page: page, sse_peer: sse_peer, other_peer: other_peer} do
       policy = placement_policy(@placement, sse_peer, other_peer)
       token = Proxy.register_policy(policy)
 
-      session =
-        session
+      page =
+        page
         |> visit("/external")
         |> set_cookie(Proxy.route_cookie(), token)
         |> visit("/command-subscribe")
@@ -36,7 +36,7 @@ defmodule HologramClusterTests.CommandSubscriptionTest do
 
       Realtime.broadcast_action(@channel, :show, message: "delivered across the cluster")
 
-      assert_text(session, "delivered across the cluster")
+      assert_text(page, "delivered across the cluster")
 
       assert_placement_premises(@placement, sse_peer, other_peer)
     end

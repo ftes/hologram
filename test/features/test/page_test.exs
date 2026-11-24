@@ -4,14 +4,14 @@ defmodule HologramFeatureTests.PagesTest do
   alias HologramFeatureTests.Pages.TemplateFilePage
   alias HologramFeatureTests.Pages.TemplateFunctionPage
 
-  feature "template defined in function", %{session: session} do
-    session
+  test "template defined in function", %{page: page} do
+    page
     |> visit(TemplateFunctionPage)
     |> assert_text("Template defined in function")
   end
 
-  feature "template defined in file", %{session: session} do
-    session
+  test "template defined in file", %{page: page} do
+    page
     |> visit(TemplateFilePage)
     |> assert_text("Template defined in file")
   end

@@ -3,49 +3,49 @@ defmodule HologramFeatureTests.Events.DocumentTest do
 
   alias HologramFeatureTests.Events.DocumentPage
 
-  feature "handles a global event", %{session: session} do
-    session
+  test "handles a global event", %{page: page} do
+    page
     |> visit(DocumentPage)
-    |> send_keys([:control, "k"])
-    |> assert_text(css("#shortcut_result"), "1")
+    |> send_keys("Control+k")
+    |> assert_text("#shortcut_result", "1")
   end
 
-  feature "activates a conditionally rendered binding", %{session: session} do
-    session
+  test "activates a conditionally rendered binding", %{page: page} do
+    page
     |> visit(DocumentPage)
     # Before its branch renders, Escape must not dispatch. The handled shortcut is a happens-after
     # barrier: once it lands, the earlier Escape has been processed too, so a zero count is reliable.
-    |> send_keys([:escape])
-    |> send_keys([:control, "k"])
-    |> assert_text(css("#shortcut_result"), "1")
-    |> assert_text(css("#escape_result"), "0")
+    |> send_keys("Escape")
+    |> send_keys("Control+k")
+    |> assert_text("#shortcut_result", "1")
+    |> assert_text("#escape_result", "0")
     # Rendering the gated <document> activates the escape binding.
-    |> click(css("#toggle_listening"))
-    |> send_keys([:escape])
-    |> assert_text(css("#escape_result"), "1")
+    |> click("#toggle_listening")
+    |> send_keys("Escape")
+    |> assert_text("#escape_result", "1")
   end
 
-  feature "deactivates a binding that is no longer rendered", %{session: session} do
-    session
+  test "deactivates a binding that is no longer rendered", %{page: page} do
+    page
     |> visit(DocumentPage)
     # Render the gated <document>, then confirm Escape dispatches.
-    |> click(css("#toggle_listening"))
-    |> send_keys([:escape])
-    |> assert_text(css("#escape_result"), "1")
+    |> click("#toggle_listening")
+    |> send_keys("Escape")
+    |> assert_text("#escape_result", "1")
     # Removing the gated <document> deactivates it. The shortcut barrier confirms the later Escape was
     # processed, so the unchanged escape count proves it did not dispatch.
-    |> click(css("#toggle_listening"))
-    |> send_keys([:escape])
-    |> send_keys([:control, "k"])
-    |> assert_text(css("#shortcut_result"), "1")
-    |> assert_text(css("#escape_result"), "1")
+    |> click("#toggle_listening")
+    |> send_keys("Escape")
+    |> send_keys("Control+k")
+    |> assert_text("#shortcut_result", "1")
+    |> assert_text("#escape_result", "1")
   end
 
   # A <document> tag renders to nil on the client; that nil must be dropped, not
   # turned into a stray "undefined" text node next to the page content.
-  feature "does not render a stray \"undefined\" text node", %{session: session} do
-    session
+  test "does not render a stray \"undefined\" text node", %{page: page} do
+    page
     |> visit(DocumentPage)
-    |> refute_has(css("body", text: "undefined"))
+    |> refute_has("body", text: "undefined")
   end
 end

@@ -3,55 +3,55 @@ defmodule HologramFeatureTests.ErrorOverlayTest do
 
   alias HologramFeatureTests.ErrorOverlayPage
 
-  @dismiss_button css("#hologram-uncaught-error-overlay button[aria-label='Dismiss']")
-  @overlay css("#hologram-uncaught-error-overlay")
+  @dismiss_button "#hologram-uncaught-error-overlay button[aria-label='Dismiss']"
+  @overlay "#hologram-uncaught-error-overlay"
 
   # Raises an uncaught error in the page, consuming the JavaScript error it logs
   # so that later interactions don't fail on it, and returns the session.
-  defp raise_error(session) do
-    assert_client_error session, RuntimeError, "overlaid error", fn ->
-      session
+  defp raise_error(page) do
+    assert_client_error page, RuntimeError, "overlaid error", fn ->
+      page
       |> visit(ErrorOverlayPage)
-      |> click(button("Raise error"))
+      |> click_button("Raise error")
     end
 
-    session
+    page
   end
 
   # Raises an error whose message runs over several lines, the same way.
-  defp raise_function_clause_error(session) do
+  defp raise_function_clause_error(page) do
     expected_msg =
       ~r/^no function clause matching in HologramFeatureTests\.ErrorOverlayPage\.only_tuple\/1/
 
-    assert_client_error session, FunctionClauseError, expected_msg, fn ->
-      session
+    assert_client_error page, FunctionClauseError, expected_msg, fn ->
+      page
       |> visit(ErrorOverlayPage)
-      |> click(button("No matching clause"))
+      |> click_button("No matching clause")
     end
 
-    session
+    page
   end
 
   # Raises inside Elixir's own code, so the trace carries a frame from an
   # application other than the page's.
-  defp raise_in_framework(session) do
-    assert_client_error session, Enum.OutOfBoundsError, ~r/^out of bounds error/, fn ->
-      session
+  defp raise_in_framework(page) do
+    assert_client_error page, Enum.OutOfBoundsError, ~r/^out of bounds error/, fn ->
+      page
       |> visit(ErrorOverlayPage)
-      |> click(button("Raise in framework"))
+      |> click_button("Raise in framework")
     end
 
-    session
+    page
   end
 
   # Matches an element the overlay renders in the given tone, holding the given
   # text - which is what says a run of text was read the way it should be.
-  defp toned(tone, text) do
-    css(".hologram-error-overlay__tone-#{tone}", count: :any, text: text)
+  defp toned(tone) do
+    ".hologram-error-overlay__tone-#{tone}"
   end
 
-  feature "renders the error the page raised", %{session: session} do
-    session
+  test "renders the error the page raised", %{page: page} do
+    page
     |> raise_error()
     |> assert_has(@overlay)
     |> assert_text(@overlay, "Runtime Error")
@@ -60,62 +60,62 @@ defmodule HologramFeatureTests.ErrorOverlayTest do
 
   # The overlay shows what the console shows, stacktrace included, so every frame
   # the error came through is named in the page as well.
-  feature "renders the stacktrace alongside the message", %{session: session} do
-    page = inspect(ErrorOverlayPage)
+  test "renders the stacktrace alongside the message", %{page: page} do
+    page_module = inspect(ErrorOverlayPage)
 
-    session
+    page
     |> raise_error()
-    |> assert_text(@overlay, "#{page}.inner_fun/0")
-    |> assert_text(@overlay, "#{page}.middle_fun/0")
-    |> assert_text(@overlay, "#{page}.outer_fun/0")
-    |> assert_text(@overlay, "#{page}.action/3")
+    |> assert_text(@overlay, "#{page_module}.inner_fun/0")
+    |> assert_text(@overlay, "#{page_module}.middle_fun/0")
+    |> assert_text(@overlay, "#{page_module}.outer_fun/0")
+    |> assert_text(@overlay, "#{page_module}.action/3")
   end
 
-  feature "sets the message apart from the frames it came through", %{session: session} do
-    session
+  test "sets the message apart from the frames it came through", %{page: page} do
+    page
     |> raise_error()
-    |> assert_has(toned("banner", "** (RuntimeError) overlaid error"))
+    |> assert_has(toned("banner"), count: :any, text: "** (RuntimeError) overlaid error")
   end
 
   # A frame the page raised in is split, so where it happened reads apart from
   # what was running there.
-  feature "sets a frame's source location apart from what was running", %{session: session} do
-    session
+  test "sets a frame's source location apart from what was running", %{page: page} do
+    page
     |> raise_error()
-    |> assert_has(toned("meta", "error_overlay_page.ex:"))
-    |> assert_has(toned("body", "#{inspect(ErrorOverlayPage)}.inner_fun/0"))
+    |> assert_has(toned("meta"), count: :any, text: "error_overlay_page.ex:")
+    |> assert_has(toned("body"), count: :any, text: "#{inspect(ErrorOverlayPage)}.inner_fun/0")
   end
 
   # A frame from outside the page reads in one tone throughout, so the page's own
   # frames stand out of the run rather than having to be found in it. The page's
   # own frames name no application, so this needs an error raised where one does.
-  feature "reads a frame from outside the page in one tone", %{session: session} do
-    session
+  test "reads a frame from outside the page in one tone", %{page: page} do
+    page
     |> raise_in_framework()
-    |> assert_has(toned("chrome", "(elixir "))
+    |> assert_has(toned("chrome"), count: :any, text: "(elixir ")
   end
 
   # A FunctionClauseError lists the arguments it was given, indenting them the
   # way a frame is indented. The listing is part of the message, so it has to
   # stay in the message rather than be read as the frames that follow it.
-  feature "keeps a message running over several lines in one piece", %{session: session} do
-    session
+  test "keeps a message running over several lines in one piece", %{page: page} do
+    page
     |> raise_function_clause_error()
-    |> assert_has(toned("banner", "The following arguments were given to"))
-    |> assert_has(toned("banner", ":not_a_tuple"))
+    |> assert_has(toned("banner"), count: :any, text: "The following arguments were given to")
+    |> assert_has(toned("banner"), count: :any, text: ":not_a_tuple")
   end
 
-  feature "dismisses on the dismiss button", %{session: session} do
-    session
+  test "dismisses on the dismiss button", %{page: page} do
+    page
     |> raise_error()
     |> click(@dismiss_button)
     |> refute_has(@overlay)
   end
 
-  feature "dismisses on Escape", %{session: session} do
-    session
+  test "dismisses on Escape", %{page: page} do
+    page
     |> raise_error()
-    |> send_keys([:escape])
+    |> send_keys("Escape")
     |> refute_has(@overlay)
   end
 end

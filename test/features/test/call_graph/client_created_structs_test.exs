@@ -3,17 +3,17 @@ defmodule HologramFeatureTests.ClientCreatedStructsTest do
 
   alias HologramFeatureTests.CallGraph.ClientCreatedStructsPage
 
-  feature "create with defaults", %{session: session} do
-    session
+  test "create with defaults", %{page: page} do
+    page
     |> visit(ClientCreatedStructsPage)
-    |> click(button("Create with defaults"))
-    |> assert_text(css("#result"), inspect({"default", 0}))
+    |> click_button("Create with defaults")
+    |> assert_text("#result", inspect({"default", 0}))
   end
 
-  feature "create with custom values", %{session: session} do
-    session
+  test "create with custom values", %{page: page} do
+    page
     |> visit(ClientCreatedStructsPage)
-    |> click(button("Create with custom values"))
-    |> assert_text(css("#result"), inspect({"custom", 42}))
+    |> click_button("Create with custom values")
+    |> assert_text("#result", inspect({"custom", 42}))
   end
 end

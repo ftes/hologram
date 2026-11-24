@@ -285,7 +285,7 @@ export default class Hologram {
   // This function is intentionally NOT async. Actions that use Task.await/1 return
   // a Promise, but we handle it with .then() instead of async/await. Making this
   // function async would wrap ALL errors (including from sync actions) in rejected
-  // Promises, breaking ChromeDriver/Wallaby error detection which relies on the
+  // Promises, breaking the browser tests' error detection, which relies on the
   // synchronous "error" event. Async action errors are caught separately via the
   // "unhandledrejection" event listener in #init().
   //

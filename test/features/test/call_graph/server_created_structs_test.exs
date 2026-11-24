@@ -6,29 +6,29 @@ defmodule HologramFeatureTests.ServerCreatedStructsTest do
 
   @channel :server_created_structs
 
-  feature "struct created in broadcast params renders on the client", %{session: session} do
-    session = visit(session, ServerCreatedStructsPage)
+  test "struct created in broadcast params renders on the client", %{page: page} do
+    page = visit(page, ServerCreatedStructsPage)
 
-    wait_for_subscription(session, @channel)
+    wait_for_subscription(page, @channel)
 
     StructBroadcaster.broadcast_struct(@channel)
 
-    assert_text(session, css("#broadcast-result"), "broadcast struct(created in broadcast)")
+    assert_text(page, "#broadcast-result", "broadcast struct(created in broadcast)")
   end
 
-  feature "struct created in command renders on the client", %{session: session} do
-    session
+  test "struct created in command renders on the client", %{page: page} do
+    page
     |> visit(ServerCreatedStructsPage)
-    |> click(button("Load struct"))
-    |> assert_text(css("#command-result"), "command struct(created in command)")
+    |> click_button("Load struct")
+    |> assert_text("#command-result", "command struct(created in command)")
   end
 
-  feature "struct created in server init renders after client re-render", %{session: session} do
-    session
+  test "struct created in server init renders after client re-render", %{page: page} do
+    page
     |> visit(ServerCreatedStructsPage)
-    |> assert_text(css("#init-result"), "struct(created in init)")
-    |> click(button("Relabel"))
-    |> assert_text(css("#label"), "relabeled")
-    |> assert_text(css("#init-result"), "struct(created in init)")
+    |> assert_text("#init-result", "struct(created in init)")
+    |> click_button("Relabel")
+    |> assert_text("#label", "relabeled")
+    |> assert_text("#init-result", "struct(created in init)")
   end
 end

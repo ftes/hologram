@@ -47,35 +47,35 @@ defmodule HologramFeatureTests.ContentSecurityPolicyTest do
     assert length(nonced_script_tags) == length(script_tags)
   end
 
-  feature "runs an inline script the template carries", %{session: session} do
-    session
+  test "runs an inline script the template carries", %{page: page} do
+    page
     |> visit(Page2)
-    |> assert_text(css("#result"), "page 2 inline script ran")
+    |> assert_text("#result", "page 2 inline script ran")
   end
 
   # The script element is the client's own here, created through the runtime's Trusted Types
   # policy, which the document enforces, and carrying the document's nonce. The mark set before the
   # click survives it, so the page was navigated to rather than loaded, which would have the
   # browser run the script itself.
-  feature "runs an inline script a navigated page carries", %{session: session} do
+  test "runs an inline script a navigated page carries", %{page: page} do
     nonce_matches = """
     const nonce = globalThis.Hologram.cspNonce;
     return nonce !== "" && document.querySelector("#page_3_script").nonce === nonce;
     """
 
-    session
+    page
     |> visit(Page1)
     |> execute_script("window.notReloaded = true;")
-    |> click(link("Page 3 link"))
+    |> click_link("Page 3 link")
     |> assert_page(Page3)
-    |> assert_text(css("#result"), "page 3 inline script ran")
+    |> assert_text("#result", "page 3 inline script ran")
     |> assert_script_result("return window.notReloaded === true;", true)
     |> assert_script_result(nonce_matches, true)
   end
 
   # An attacker who gets markup into a page can't run code through it: an inline event handler
   # carries no nonce. The default Trusted Types policy is what lets the test write markup at all.
-  feature "blocks an inline event handler injected as markup", %{session: session} do
+  test "blocks an inline event handler injected as markup", %{page: page} do
     inject_markup = """
     trustedTypes.createPolicy("default", {createHTML: (html) => html});
 
@@ -85,17 +85,17 @@ defmodule HologramFeatureTests.ContentSecurityPolicyTest do
     );
     """
 
-    session
+    page
     |> visit(Page1)
     |> execute_script(@record_violations <> inject_markup)
-    |> assert_text(css(".violation"), "script-src-attr")
-    |> assert_text(css("#result"), "none")
+    |> assert_text(".violation", "script-src-attr")
+    |> assert_text("#result", "none")
   end
 
-  feature "evaluates JS interop code", %{session: session} do
-    session
+  test "evaluates JS interop code", %{page: page} do
+    page
     |> visit(Page1)
-    |> click(button("Evaluate code"))
-    |> assert_text(css("#result"), "evaluated 21")
+    |> click_button("Evaluate code")
+    |> assert_text("#result", "evaluated 21")
   end
 end

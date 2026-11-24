@@ -12,10 +12,10 @@ defmodule HologramCowboyTests.PingTest do
   });
   """
 
-  feature "the ping route answers", %{session: session} do
-    session
+  test "the ping route answers", %{page: page} do
+    page
     |> visit(PlainPage)
     |> execute_script(@script)
-    |> assert_text(css("#ping"), "200")
+    |> assert_text("#ping", "200")
   end
 end

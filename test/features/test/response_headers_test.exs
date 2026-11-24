@@ -65,11 +65,11 @@ defmodule HologramFeatureTests.ResponseHeadersTest do
   # The layout records each fetch response's headers when the fetch returns, before the runtime
   # reads the body, so once the page is on screen the record is there.
   describe "navigation" do
-    feature "carries a header page middleware set", %{session: session} do
-      session
+    test "carries a header page middleware set", %{page: page} do
+      page
       |> visit(Page3)
-      |> assert_text(css("#result"), "navigation origin")
-      |> click(link("Page 1 link"))
+      |> assert_text("#result", "navigation origin")
+      |> click_link("Page 1 link")
       |> assert_page(Page1)
       |> assert_script_result(
         ~s(return window.__responseHeaders["#{@page_data_path}.Page1"]["cache-control"];),
@@ -77,11 +77,11 @@ defmodule HologramFeatureTests.ResponseHeadersTest do
       )
     end
 
-    feature "carries a header the page's init/3 set", %{session: session} do
-      session
+    test "carries a header the page's init/3 set", %{page: page} do
+      page
       |> visit(Page3)
-      |> assert_text(css("#result"), "navigation origin")
-      |> click(link("Page 2 link"))
+      |> assert_text("#result", "navigation origin")
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> assert_script_result(
         ~s(return window.__responseHeaders["#{@page_data_path}.Page2"]["x-robots-tag"];),
@@ -92,22 +92,22 @@ defmodule HologramFeatureTests.ResponseHeadersTest do
 
   # As with navigation, the record is there once the command's result is on screen.
   describe "command" do
-    feature "carries a header the command set", %{session: session} do
-      session
+    test "carries a header the command set", %{page: page} do
+      page
       |> visit(Page4)
-      |> click(css("button[id='run_command']"))
-      |> assert_text(css("#result"), "page 4 command ran")
+      |> click("button[id='run_command']")
+      |> assert_text("#result", "page 4 command ran")
       |> assert_script_result(
         ~s(return window.__responseHeaders["/hologram/command"]["x-set-by"];),
         "command"
       )
     end
 
-    feature "carries a header command middleware set", %{session: session} do
-      session
+    test "carries a header command middleware set", %{page: page} do
+      page
       |> visit(Page5)
-      |> click(css("button[id='run_command']"))
-      |> assert_text(css("#result"), "page 5 command ran")
+      |> click("button[id='run_command']")
+      |> assert_text("#result", "page 5 command ran")
       |> assert_script_result(
         ~s(return window.__responseHeaders["/hologram/command"]["x-set-by"];),
         "command middleware"

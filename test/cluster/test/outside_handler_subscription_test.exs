@@ -15,19 +15,19 @@ defmodule HologramClusterTests.OutsideHandlerSubscriptionTest do
     [other_peer: other_peer, sse_peer: sse_peer]
   end
 
-  feature "a grant issued on a node not holding the connection reaches the tab",
-          %{session: session, sse_peer: sse_peer, other_peer: other_peer} do
+  test "a grant issued on a node not holding the connection reaches the tab",
+       %{page: page, sse_peer: sse_peer, other_peer: other_peer} do
     # Pin the whole tab to one peer, so the grant below provably originates elsewhere.
     token = Proxy.register_policy(fn _request_facts, _cluster_facts -> sse_peer.port end)
 
-    session =
-      session
+    page =
+      page
       |> visit("/external")
       |> set_cookie(Proxy.route_cookie(), token)
       |> visit("/plain")
 
     wait_for_connection(sse_peer)
-    instance_id = instance_id_of(session)
+    instance_id = instance_id_of(page)
 
     # Both the grant and the broadcast run on the peer that does NOT hold the
     # connection - a background job landing on an arbitrary cluster node.
@@ -42,7 +42,7 @@ defmodule HologramClusterTests.OutsideHandlerSubscriptionTest do
       [message: "granted across the cluster"]
     ])
 
-    assert_text(session, "granted across the cluster")
+    assert_text(page, "granted across the cluster")
 
     # The premise, proven: the binding lives on the peer holding the stream, and the
     # granting peer holds nothing.

@@ -3,10 +3,10 @@ defmodule HologramCowboyTests.CommandTest do
 
   alias HologramCowboyTests.CommandPage
 
-  feature "a command round-trips", %{session: session} do
-    session
+  test "a command round-trips", %{page: page} do
+    page
     |> visit(CommandPage)
-    |> click(css("#run"))
-    |> assert_text(css("#result"), "answered with 42")
+    |> click("#run")
+    |> assert_text("#result", "answered with 42")
   end
 end

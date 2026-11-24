@@ -6,8 +6,8 @@ defmodule HologramCowboyTests.SSETest do
 
   @channel {:room, 1}
 
-  feature "the stream attaches and stays open", %{session: session} do
-    session
+  test "the stream attaches and stays open", %{page: page} do
+    page
     |> visit(RealtimePage)
     |> wait_for_subscription(@channel)
 
@@ -17,6 +17,6 @@ defmodule HologramCowboyTests.SSETest do
 
     Realtime.broadcast_action(@channel, :show, message: "delivered after a pause")
 
-    assert_text(session, css("#received"), "delivered after a pause")
+    assert_text(page, "#received", "delivered after a pause")
   end
 end
