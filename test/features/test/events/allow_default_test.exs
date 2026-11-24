@@ -4,13 +4,13 @@ defmodule HologramFeatureTests.Events.AllowDefaultTest do
   alias HologramFeatureTests.Events.AllowDefault.Page1
   alias HologramFeatureTests.Events.AllowDefault.Page2
 
-  feature "allow_default lets the native form submission proceed while a plain binding prevents it",
-          %{session: session} do
-    session
+  test "allow_default lets the native form submission proceed while a plain binding prevents it",
+       %{page: page} do
+    page
     |> visit(Page1)
-    |> click(css("#prevented_submit"))
-    |> assert_text(css("#result"), "{false, true}")
-    |> click(css("#allowed_submit"))
+    |> click("#prevented_submit")
+    |> assert_text("#result", "{false, true}")
+    |> click("#allowed_submit")
     |> assert_page(Page2)
   end
 end

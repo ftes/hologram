@@ -4,185 +4,150 @@ defmodule Hologram.Test.FeatureHelpers do
   # This is not public API yet - it is consumed by the Hologram feature tests
   # and umbrella tests apps.
   # TODO: consider promoting to public API (docs, stable surface), so that
-  # client apps can use these helpers in their own Wallaby suites.
+  # client apps can use these helpers in their own Playwright suites.
 
-  # Wallaby is not a Hologram dependency - client apps that use these helpers
-  # bring their own. This lets the module compile without Wallaby present.
-  @compile {:no_warn_undefined, [Wallaby.Browser, Wallaby.ExpectationNotMetError]}
+  # playwright_ex is not a Hologram dependency - client apps that use these
+  # helpers bring their own. This lets the module compile without it present.
+  @compile {:no_warn_undefined,
+            [Playwright.BrowserContext, Playwright.Expect, Playwright.Page, Playwright.WebError]}
 
   alias Hologram.Router
-  alias Wallaby.Browser
+
+  # Waits in the page: the mounted page is the expected one and both server
+  # connections are up. Polled by the browser, so it settles as soon as they do.
+  @mounted_script """
+  (page) =>
+    globalThis.Hologram?.mountedPage === page &&
+      globalThis.Hologram["wsConnected?"] === true &&
+      globalThis.Hologram["sseConnected?"] === true
+  """
 
   @doc """
-  Asserts that the session has navigated to the given page: blocks until the
+  Asserts that the page has navigated to the given page: blocks until the
   current path matches the page's route, the Hologram client runtime has
   mounted the page, and its server connections are established.
-
-  ## Options
-
-    * `:debug` - when true, prints the mounted vs expected page and the client
-      logs on each mounting poll. Defaults to false.
   """
-  @spec assert_page(struct, module, keyword, keyword) :: struct
-  def assert_page(session, page_module, params \\ [], opts \\ []) do
+  @spec assert_page(struct, module, keyword) :: struct
+  def assert_page(page, page_module, params \\ []) do
     path = Router.Helpers.page_path(page_module, params)
 
-    session
-    |> wait_for_path(path)
-    |> wait_for_page_mounting(page_module, opts)
-    |> wait_for_ws_connection()
-    |> wait_for_sse_connection()
+    Playwright.Page.wait_for_url!(page, &(&1.path == path))
+    wait_for_page_mounting(page, page_module)
   end
 
   @doc """
-  Visits the given path or URL in the session, without waiting for any
-  Hologram page mounting or server connections.
+  Runs `fun` and returns the first uncaught error it raised in the page, which
+  `track_js_errors/1` then doesn't fail the test on. Waits for the error, as the
+  page may raise it after `fun` returns.
+  """
+  @spec take_js_error((-> any)) :: Exception.t()
+  def take_js_error(fun) do
+    errors = Process.get(:hologram_js_errors)
+    Agent.update(errors, &%{&1 | expecting?: true})
+
+    try do
+      fun.()
+
+      Playwright.Expect.poll!(
+        fn -> Agent.get(errors, & &1.expected) end,
+        &if(&1 == [], do: ExUnit.Assertions.flunk("no uncaught JavaScript error"))
+      )
+
+      errors
+      |> Agent.get_and_update(&{&1.expected, %{&1 | expected: []}})
+      |> List.last()
+    after
+      Agent.update(errors, &%{&1 | expecting?: false})
+    end
+  end
+
+  @doc """
+  Fails the test on an uncaught error in any page of the context, unless it is
+  expected with `take_js_error/1`. The contexts of a test share one record, which
+  is checked again at the test's end: a listener can't fail a test that has
+  finished.
+  """
+  @spec track_js_errors(struct) :: :ok
+  def track_js_errors(context) do
+    errors = js_errors()
+
+    Playwright.BrowserContext.on(context, :web_error, fn web_error ->
+      error = Playwright.WebError.error(web_error)
+
+      unless record_js_error(errors, error) do
+        ExUnit.Assertions.flunk("uncaught JavaScript error: #{Exception.message(error)}")
+      end
+    end)
+
+    :ok
+  end
+
+  @doc """
+  Visits the given path or URL in the page, without waiting for any Hologram
+  page mounting or server connections.
   """
   @spec visit(struct, String.t()) :: struct
-  def visit(session, path_or_url) when is_binary(path_or_url) do
-    Browser.visit(session, path_or_url)
+  def visit(page, path_or_url) when is_binary(path_or_url) do
+    Playwright.Page.goto!(page, path_or_url)
+    page
   end
 
   @doc """
-  Visits the page in the session and blocks until the Hologram client runtime
-  has mounted it and established its server connections, so that subsequent
-  interactions can't race the runtime's event listener attachment.
+  Visits the page module in the page and blocks until the Hologram client
+  runtime has mounted it and established its server connections, so that
+  subsequent interactions can't race the runtime's event listener attachment.
   """
   @spec visit(struct, module, keyword) :: struct
-  def visit(session, page_module, params \\ []) do
+  def visit(page, page_module, params \\ []) do
     path = Router.Helpers.page_path(page_module, params)
 
-    session
-    |> Browser.visit(path)
-    |> wait_for_page_mounting(page_module, [])
-    |> wait_for_ws_connection()
-    |> wait_for_sse_connection()
+    Playwright.Page.goto!(page, path)
+    wait_for_page_mounting(page, page_module)
   end
 
-  defp current_time do
-    :erlang.monotonic_time(:milli_seconds)
-  end
+  # The test's record of uncaught errors, started with its check at the test's end.
+  defp js_errors do
+    case Process.get(:hologram_js_errors) do
+      nil ->
+        # Unlinked, so the on_exit callback can still read it once the test process is gone.
+        {:ok, errors} = Agent.start(fn -> %{expecting?: false, expected: [], unexpected: []} end)
+        Process.put(:hologram_js_errors, errors)
+        ExUnit.Callbacks.on_exit(fn -> check_js_errors(errors) end)
+        errors
 
-  # Read at runtime (not compile time) so that the client app's Wallaby config
-  # is honored - this module is compiled as part of the Hologram dependency,
-  # before the client app's config exists.
-  defp max_wait_time do
-    Application.get_env(:wallaby, :max_wait_time, 3_000)
-  end
-
-  defp maybe_print_page_mounting_debug_info(session, opts, mounted_page, expected_page) do
-    if opts[:debug] do
-      # credo:disable-for-lines:2 Credo.Check.Refactor.IoPuts
-      IO.puts("----------")
-      IO.puts("mounted page: #{inspect(mounted_page)}, expected page: #{inspect(expected_page)}")
-
-      print_client_logs(session)
+      errors ->
+        errors
     end
   end
 
-  defp print_client_logs(session) do
-    script = "return sessionStorage.getItem('hologram_logs');"
+  defp check_js_errors(errors) do
+    %{unexpected: unexpected} = Agent.get(errors, & &1)
+    Agent.stop(errors)
 
-    # credo:disable-for-next-line Credo.Check.Warning.IoInspect
-    Browser.execute_script(session, script, [], &IO.inspect/1)
+    if unexpected != [] do
+      messages =
+        unexpected
+        |> Enum.reverse()
+        |> Enum.map(&Exception.message/1)
+
+      ExUnit.Assertions.flunk("uncaught JavaScript errors: #{inspect(messages)}")
+    end
   end
 
-  defp raise_page_mounting_timeout(session, expected_page, mounted_page) do
-    Browser.execute_script(session, "return document.body.innerText;", [], fn page_text ->
-      page_text_start = String.slice(page_text, 0, 500)
-
-      raise Wallaby.ExpectationNotMetError,
-            "Timed out waiting for page mounting, expected #{inspect(expected_page)}, " <>
-              "mounted #{inspect(mounted_page)}, page text: #{inspect(page_text_start)}"
+  # Records the error, and returns whether it was expected. An error after the record
+  # is gone (the test has ended) counts as unexpected.
+  defp record_js_error(errors, error) do
+    Agent.get_and_update(errors, fn
+      %{expecting?: true} = state -> {true, %{state | expected: [error | state.expected]}}
+      state -> {false, %{state | unexpected: [error | state.unexpected]}}
     end)
+  catch
+    :exit, _reason -> false
   end
 
-  defp timed_out?(start_time) do
-    current_time() - start_time > max_wait_time()
-  end
+  defp wait_for_page_mounting(page, page_module) do
+    Playwright.Page.wait_for_function!(page, @mounted_script, inspect(page_module))
 
-  defp wait_for_page_mounting(session, expected_page, opts, start_time \\ nil) do
-    start_time = start_time || current_time()
-
-    callback = fn mounted_page ->
-      cond do
-        mounted_page == inspect(expected_page) ->
-          :ok
-
-        timed_out?(start_time) ->
-          raise_page_mounting_timeout(session, expected_page, mounted_page)
-
-        true ->
-          maybe_print_page_mounting_debug_info(session, opts, mounted_page, expected_page)
-          :timer.sleep(100)
-          wait_for_page_mounting(session, expected_page, opts, start_time)
-      end
-    end
-
-    script = "return globalThis.Hologram?.['mountedPage'];"
-
-    Browser.execute_script(session, script, [], callback)
-  end
-
-  defp wait_for_path(session, path, start_time \\ nil) do
-    start_time = start_time || current_time()
-    current_path = Browser.current_path(session)
-
-    cond do
-      current_path == path ->
-        session
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for path #{path}, current path is #{current_path}"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_path(session, path, start_time)
-    end
-  end
-
-  defp wait_for_sse_connection(session, start_time \\ nil) do
-    start_time = start_time || current_time()
-
-    callback = fn connected? ->
-      cond do
-        connected? ->
-          :ok
-
-        timed_out?(start_time) ->
-          raise Wallaby.ExpectationNotMetError, "Timed out waiting for SSE connection"
-
-        true ->
-          :timer.sleep(100)
-          wait_for_sse_connection(session, start_time)
-      end
-    end
-
-    script = "return globalThis.Hologram?.['sseConnected?'];"
-
-    Browser.execute_script(session, script, [], callback)
-  end
-
-  defp wait_for_ws_connection(session, start_time \\ nil) do
-    start_time = start_time || current_time()
-
-    callback = fn connected? ->
-      cond do
-        connected? ->
-          :ok
-
-        timed_out?(start_time) ->
-          raise Wallaby.ExpectationNotMetError, "Timed out waiting for WebSocket connection"
-
-        true ->
-          :timer.sleep(100)
-          wait_for_ws_connection(session, start_time)
-      end
-    end
-
-    script = "return globalThis.Hologram?.['wsConnected?'];"
-
-    Browser.execute_script(session, script, [], callback)
+    page
   end
 end

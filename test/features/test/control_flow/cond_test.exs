@@ -3,78 +3,78 @@ defmodule HologramFeatureTests.ControlFlow.CondTest do
   alias HologramFeatureTests.ControlFlow.CondPage
 
   # single-expression clause condition / single clause / single-expression clause body
-  feature "basic case", %{session: session} do
-    session
+  test "basic case", %{page: page} do
+    page
     |> visit(CondPage)
-    |> click(button("Basic case"))
-    |> assert_text(css("#result"), ":a")
+    |> click_button("Basic case")
+    |> assert_text("#result", ":a")
   end
 
-  feature "multiple-expression clause condition", %{session: session} do
-    session
+  test "multiple-expression clause condition", %{page: page} do
+    page
     |> visit(CondPage)
-    |> click(button("Multiple-expression clause condition"))
-    |> assert_text(css("#result"), ":a")
+    |> click_button("Multiple-expression clause condition")
+    |> assert_text("#result", ":a")
   end
 
-  feature "multiple clauses", %{session: session} do
-    session
+  test "multiple clauses", %{page: page} do
+    page
     |> visit(CondPage)
-    |> click(button("Multiple clauses"))
-    |> assert_text(css("#result"), ":b")
+    |> click_button("Multiple clauses")
+    |> assert_text("#result", ":b")
   end
 
-  feature "multiple-expression clause body", %{session: session} do
-    session
+  test "multiple-expression clause body", %{page: page} do
+    page
     |> visit(CondPage)
-    |> click(button("Multiple-expression clause body"))
-    |> assert_text(css("#result"), ":b")
+    |> click_button("Multiple-expression clause body")
+    |> assert_text("#result", ":b")
   end
 
-  feature "evaluates the first clause with truthy condition", %{session: session} do
-    session
+  test "evaluates the first clause with truthy condition", %{page: page} do
+    page
     |> visit(CondPage)
-    |> click(button("Evaluates the first clause with truthy condition"))
-    |> assert_text(css("#result"), ":c")
+    |> click_button("Evaluates the first clause with truthy condition")
+    |> assert_text("#result", ":c")
   end
 
-  feature "vars scoping", %{session: session} do
-    session
+  test "vars scoping", %{page: page} do
+    page
     |> visit(CondPage)
-    |> click(button("Vars scoping"))
-    |> assert_text(css("#result"), "{1, 2, 3, {14, 5, 3}}")
+    |> click_button("Vars scoping")
+    |> assert_text("#result", "{1, 2, 3, {14, 5, 3}}")
   end
 
-  feature "no matching clause", %{session: session} do
-    assert_client_error session,
+  test "no matching clause", %{page: page} do
+    assert_client_error page,
                         CondClauseError,
                         "no cond clause evaluated to a truthy value",
                         fn ->
-                          session
+                          page
                           |> visit(CondPage)
-                          |> click(button("No matching clause"))
+                          |> click_button("No matching clause")
                         end
   end
 
-  feature "error in clause condition", %{session: session} do
-    assert_client_error session,
+  test "error in clause condition", %{page: page} do
+    assert_client_error page,
                         RuntimeError,
                         "my message",
                         fn ->
-                          session
+                          page
                           |> visit(CondPage)
-                          |> click(button("Error in clause condition"))
+                          |> click_button("Error in clause condition")
                         end
   end
 
-  feature "error in clause body", %{session: session} do
-    assert_client_error session,
+  test "error in clause body", %{page: page} do
+    assert_client_error page,
                         ArgumentError,
                         "my message",
                         fn ->
-                          session
+                          page
                           |> visit(CondPage)
-                          |> click(button("Error in clause body"))
+                          |> click_button("Error in clause body")
                         end
   end
 end

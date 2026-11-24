@@ -5,21 +5,21 @@ defmodule HologramFeatureTests.LayoutsTest do
   alias HologramFeatureTests.Layouts.PropsPassedExplicitelyPage
   alias HologramFeatureTests.Layouts.PropsPassedImplicitelyPage
 
-  feature "no props", %{session: session} do
-    session
+  test "no props", %{page: page} do
+    page
     |> visit(NoPropsPage)
-    |> assert_text(css("#layout_result"), ~s'%{cid: "layout"}')
+    |> assert_text("#layout_result", ~s'%{cid: "layout"}')
   end
 
-  feature "props passed explicitely", %{session: session} do
-    session
+  test "props passed explicitely", %{page: page} do
+    page
     |> visit(PropsPassedExplicitelyPage)
-    |> assert_text(css("#layout_result"), ~s'%{a: "abc", b: 123, cid: "layout"}')
+    |> assert_text("#layout_result", ~s'%{a: "abc", b: 123, cid: "layout"}')
   end
 
-  feature "props passed implicitely", %{session: session} do
-    session
+  test "props passed implicitely", %{page: page} do
+    page
     |> visit(PropsPassedImplicitelyPage)
-    |> assert_text(css("#layout_result"), ~s'%{a: "abc", b: 123, cid: "layout"}')
+    |> assert_text("#layout_result", ~s'%{a: "abc", b: 123, cid: "layout"}')
   end
 end

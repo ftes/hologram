@@ -36,3 +36,5 @@ hologram_ecosystem_tests-*.tar
 
 # Node JS & npm.
 /assets/node_modules/
+# Traces and screenshots of failed browser tests.
+/test-results/

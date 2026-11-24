@@ -12,12 +12,12 @@ defmodule HologramFeatureTests.AssetManifestTest do
   # Windows cannot hold such a file name - every character that makes it hostile is illegal
   # there - so the bug cannot occur on Windows and this test never applies to it.
   @tag :skip_on_windows
-  feature "static file named with the chars a script cannot carry raw", %{session: session} do
-    session
+  test "static file named with the chars a script cannot carry raw", %{page: page} do
+    page
     |> visit(AssetManifestPage)
-    |> assert_text(css("#path"), ~S|/hostile/quote"backslash\tag</script>.txt|)
-    |> click(css("#button"))
-    |> assert_text(css("#status"), "clicked")
-    |> assert_text(css("#path"), ~S|/hostile/quote"backslash\tag</script>.txt|)
+    |> assert_text("#path", ~S|/hostile/quote"backslash\tag</script>.txt|)
+    |> click("#button")
+    |> assert_text("#status", "clicked")
+    |> assert_text("#path", ~S|/hostile/quote"backslash\tag</script>.txt|)
   end
 end

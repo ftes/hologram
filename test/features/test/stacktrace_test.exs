@@ -20,7 +20,7 @@ defmodule HologramFeatureTests.StacktraceTest do
   # The raising frame reports the raise expression's line and carries the
   # error_info naming the exception formatter. Each caller frame below it
   # reports the line its call is made on - not the line its function starts at.
-  feature "each frame points at the line its function has reached", %{session: session} do
+  test "each frame points at the line its function has reached", %{page: page} do
     expected =
       "{:nested_calls_trace, [" <>
         "{#{inspect(StacktraceFixture)}, :raise_error, 1, " <>
@@ -30,18 +30,18 @@ defmodule HologramFeatureTests.StacktraceTest do
         "{#{inspect(StacktracePage)}, :action, 3, " <>
         "[file: #{@page_file}, line: #{@local_call_line}]}]}"
 
-    session
+    page
     |> visit(StacktracePage)
-    |> click(button("Nested calls"))
-    |> assert_text(css("#result"), expected)
+    |> click_button("Nested calls")
+    |> assert_text("#result", expected)
   end
 
   # An anonymous function's frame is named after its enclosing definition, the
   # way the BEAM names it. The trailing fun counter is the client's own - the
   # server numbers every generated function in the module, which no message
   # depends on (see Hologram.Compiler.Encoder).
-  feature "raise inside an anonymous function names its frame after the definition",
-          %{session: session} do
+  test "raise inside an anonymous function names its frame after the definition",
+       %{page: page} do
     expected =
       "{:anonymous_function_trace, [" <>
         ~s({#{inspect(StacktracePage)}, :"-action/3-fun-0-", 1, ) <>
@@ -49,17 +49,17 @@ defmodule HologramFeatureTests.StacktraceTest do
         "{#{inspect(StacktracePage)}, :action, 3, " <>
         "[file: #{@page_file}, line: #{@anonymous_call_line}]}]}"
 
-    session
+    page
     |> visit(StacktracePage)
-    |> click(button("Anonymous function"))
-    |> assert_text(css("#result"), expected)
+    |> click_button("Anonymous function")
+    |> assert_text("#result", expected)
   end
 
   # A clause mismatch is raised on entering the function, before any line inside
   # it has been reached, so the frame reports the first clause - where the
   # function starts. The raising frame carries the arguments it was given in
   # place of an arity, and names no exception formatter.
-  feature "a clause mismatch points at the function's first clause", %{session: session} do
+  test "a clause mismatch points at the function's first clause", %{page: page} do
     expected =
       "{:no_matching_clause_trace, [" <>
         "{#{inspect(StacktracePage)}, :only_tuple, [:not_a_tuple], " <>
@@ -67,9 +67,9 @@ defmodule HologramFeatureTests.StacktraceTest do
         "{#{inspect(StacktracePage)}, :action, 3, " <>
         "[file: #{@page_file}, line: #{@no_matching_clause_call_line}]}]}"
 
-    session
+    page
     |> visit(StacktracePage)
-    |> click(button("No matching clause"))
-    |> assert_text(css("#result"), expected)
+    |> click_button("No matching clause")
+    |> assert_text("#result", expected)
   end
 end

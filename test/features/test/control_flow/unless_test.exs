@@ -3,92 +3,92 @@ defmodule HologramFeatureTests.ControlFlow.UnlessTest do
   alias HologramFeatureTests.ControlFlow.UnlessPage
 
   # single-expression condition / single-expression unless body / no else expression
-  feature "basic case", %{session: session} do
-    session
+  test "basic case", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Basic case"))
-    |> assert_text(css("#result"), ":a")
+    |> click_button("Basic case")
+    |> assert_text("#result", ":a")
   end
 
-  feature "multiple-expression condition", %{session: session} do
-    session
+  test "multiple-expression condition", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Multiple-expression condition"))
-    |> assert_text(css("#result"), ":a")
+    |> click_button("Multiple-expression condition")
+    |> assert_text("#result", ":a")
   end
 
-  feature "multiple-expression unless body", %{session: session} do
-    session
+  test "multiple-expression unless body", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Multiple-expression unless body"))
-    |> assert_text(css("#result"), ":a")
+    |> click_button("Multiple-expression unless body")
+    |> assert_text("#result", ":a")
   end
 
-  feature "unmet condition, no else body", %{session: session} do
-    session
+  test "unmet condition, no else body", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Unmet condition, no else body"))
-    |> assert_text(css("#result"), "nil")
+    |> click_button("Unmet condition, no else body")
+    |> assert_text("#result", "nil")
   end
 
-  feature "single-expression else body", %{session: session} do
-    session
+  test "single-expression else body", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Single-expression else body"))
-    |> assert_text(css("#result"), ":b")
+    |> click_button("Single-expression else body")
+    |> assert_text("#result", ":b")
   end
 
-  feature "multiple-expression else body", %{session: session} do
-    session
+  test "multiple-expression else body", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Multiple-expression else body"))
-    |> assert_text(css("#result"), ":c")
+    |> click_button("Multiple-expression else body")
+    |> assert_text("#result", ":c")
   end
 
-  feature "vars scoping in unless body", %{session: session} do
-    session
+  test "vars scoping in unless body", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Vars scoping in unless body"))
-    |> assert_text(css("#result"), "{1, 2, 3, {11, 2, 3}}")
+    |> click_button("Vars scoping in unless body")
+    |> assert_text("#result", "{1, 2, 3, {11, 2, 3}}")
   end
 
-  feature "vars scoping in else body", %{session: session} do
-    session
+  test "vars scoping in else body", %{page: page} do
+    page
     |> visit(UnlessPage)
-    |> click(button("Vars scoping in else body"))
-    |> assert_text(css("#result"), "{1, 2, 3, {11, 2, 3}}")
+    |> click_button("Vars scoping in else body")
+    |> assert_text("#result", "{1, 2, 3, {11, 2, 3}}")
   end
 
-  feature "error in condition", %{session: session} do
-    assert_client_error session,
+  test "error in condition", %{page: page} do
+    assert_client_error page,
                         RuntimeError,
                         "my message",
                         fn ->
-                          session
+                          page
                           |> visit(UnlessPage)
-                          |> click(button("Error in condition"))
+                          |> click_button("Error in condition")
                         end
   end
 
-  feature "error in unless body", %{session: session} do
-    assert_client_error session,
+  test "error in unless body", %{page: page} do
+    assert_client_error page,
                         ArgumentError,
                         "my message",
                         fn ->
-                          session
+                          page
                           |> visit(UnlessPage)
-                          |> click(button("Error in unless body"))
+                          |> click_button("Error in unless body")
                         end
   end
 
-  feature "error in else body", %{session: session} do
-    assert_client_error session,
+  test "error in else body", %{page: page} do
+    assert_client_error page,
                         ArgumentError,
                         "my message",
                         fn ->
-                          session
+                          page
                           |> visit(UnlessPage)
-                          |> click(button("Error in else body"))
+                          |> click_button("Error in else body")
                         end
   end
 end

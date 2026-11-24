@@ -1,7 +1,6 @@
 defmodule HologramFeatureTests.Helpers do
-  import ExUnit.Assertions, only: [assert: 2, assert_raise: 3]
-  import Hologram.Commons.Guards, only: [is_regex: 1]
-  import Hologram.Test.FeatureHelpers, only: [visit: 2, visit: 3]
+  import Playwright.Test.Assertions
+  import Hologram.Test.FeatureHelpers, only: [take_js_error: 1, track_js_errors: 1, visit: 3]
 
   alias Hologram.Assets.PageDigestRegistry
   alias Hologram.Realtime
@@ -11,163 +10,171 @@ defmodule HologramFeatureTests.Helpers do
   alias Hologram.Router.Helpers, as: RouterHelpers
   alias HologramFeatureTestsWeb.Endpoint
   alias HologramFeatureTestsWeb.Plugs.SlowPageBundle
-  alias Wallaby.Browser
-  alias Wallaby.Element
-  alias Wallaby.Query
-  alias Wallaby.Query.ErrorMessage
-  alias Wallaby.StaleReferenceError
+  alias Playwright.Browser
+  alias Playwright.BrowserContext
+  alias Playwright.Clock
+  alias Playwright.Expect
+  alias Playwright.Keyboard
+  alias Playwright.Locator
+  alias Playwright.Page
 
-  @max_wait_time Application.compile_env(:wallaby, :max_wait_time, 3_000)
+  @doc """
+  Asserts that `fun` raises an error in the client: an uncaught error of the
+  given Hologram exception module, whose message is `expected_msg` (or matches it,
+  when it's a regex). The error is read from the page, which keeps the whole of
+  it.
+  """
+  def assert_client_error(page, expected_module, expected_msg, fun) do
+    take_js_error(fun)
 
-  def assert_client_error(session, expected_module, expected_msg, fun) do
-    fun.()
-    wait_for_js_error(session)
-  rescue
-    Wallaby.JSError ->
-      script = "return globalThis.Hologram?.['lastBoxedError'];"
+    result = script_result(page, "return globalThis.Hologram?.['lastBoxedError'];")
 
-      Browser.execute_script(session, script, [], fn result ->
-        assert result["module"] == inspect(expected_module),
-               "Expected exception #{inspect(expected_module)} but got #{result["module"]} (#{result["message"]})"
+    assert result["module"] == inspect(expected_module),
+           "Expected exception #{inspect(expected_module)} but got #{result["module"]} (#{result["message"]})"
 
-        message = fn expected_display, actual_msg ->
-          """
-          Wrong message for #{inspect(expected_module)}
-          expected:
-            "#{expected_display}"
-          actual:
-            "#{actual_msg}"\
-          """
-        end
-
-        # A regex is matched rather than compared, and shows as its source - it has no
-        # string form to interpolate.
-        if is_regex(expected_msg) do
-          assert result["message"] =~ expected_msg,
-                 message.(Regex.source(expected_msg), result["message"])
-        else
-          assert result["message"] == expected_msg,
-                 message.(expected_msg, result["message"])
-        end
-      end)
-  end
-
-  def assert_count(session, css_selector, count) do
-    Browser.find(session, Query.css(css_selector, count: count))
-    session
-  end
-
-  def assert_inline_script(session, css_selector, expected_value) do
-    Browser.execute_script(
-      session,
-      "return document.querySelector('#{css_selector}').textContent;",
-      [],
-      fn actual_value ->
-        assert String.contains?(actual_value, expected_value),
-               "Expected inline script to contain '#{expected_value}' but got '#{actual_value}'"
-      end
-    )
-  end
-
-  def assert_input_value(session, css_selector, expected_value) do
-    Browser.execute_script(
-      session,
-      "return document.querySelector('#{css_selector}').value;",
-      [],
-      fn actual_value ->
-        assert actual_value == expected_value,
-               "Expected input value to be '#{expected_value}' but got '#{actual_value}'"
-      end
-    )
-  end
-
-  # The console entry the browser writes for an uncaught error is capped in
-  # length, and it elides the middle of anything longer, so only the message is
-  # matched here and only where it starts. An error naming the exception it
-  # raised is read from the page instead, by assert_client_error/4, which sees
-  # the whole of it.
-  def assert_js_error(session, expected_msg, fun) when is_binary(expected_msg) do
-    regex = ~r/^There was an uncaught JavaScript error:.+?#{Regex.escape(expected_msg)}/su
-
-    assert_js_error(session, regex, fun)
-  end
-
-  def assert_js_error(session, expected_msg, fun) when is_regex(expected_msg) do
-    assert_raise Wallaby.JSError, expected_msg, fn ->
-      fun.()
-      wait_for_js_error(session)
-    end
-  end
-
-  def assert_public_comment(session, comment) do
-    script = "return document.documentElement.outerHTML;"
-
-    callback = fn html ->
-      regex = ~r/<!\-\-\s*#{Regex.escape(comment)}\s*\-\->/
-
-      unless html =~ regex do
-        raise Wallaby.ExpectationNotMetError,
-              "Expected to find public comment \"#{comment}\" in page content, but it was not found"
-      end
+    message = fn expected_display, actual_msg ->
+      """
+      Wrong message for #{inspect(expected_module)}
+      expected:
+        "#{expected_display}"
+      actual:
+        "#{actual_msg}"\
+      """
     end
 
-    Browser.execute_script(session, script, [], callback)
+    assert_client_error_message(result["message"], expected_msg, message)
+
+    page
   end
 
-  def assert_scroll_position(session, x, y) do
-    callback = fn scroll_position ->
-      if scroll_position == [x, y] do
-        session
-      else
-        raise Wallaby.ExpectationNotMetError,
-              "Expected scroll position: [#{x}, #{y}], but got #{inspect(scroll_position)}"
-      end
+  # A regex is matched rather than compared, and shows as its source - it has no
+  # string form to interpolate.
+  defp assert_client_error_message(actual_msg, %Regex{} = expected_msg, message) do
+    source = Regex.source(expected_msg)
+    assert actual_msg =~ expected_msg, message.(source, actual_msg)
+  end
+
+  defp assert_client_error_message(actual_msg, expected_msg, message) do
+    assert actual_msg == expected_msg, message.(expected_msg, actual_msg)
+  end
+
+  def assert_count(page, selector, count) do
+    assert_has(page, selector, count: count)
+  end
+
+  @doc """
+  Asserts that the CSS selector matches exactly one visible element, or `count:`
+  visible elements (`:any` for at least one). `text:` narrows the matches to the elements containing it.
+  """
+  def assert_has(page, selector, opts \\ []) do
+    locator = visible(page, selector, opts)
+
+    case opts[:count] do
+      nil ->
+        Expect.to_be_visible!(locator)
+
+      :any ->
+        locator
+        |> Locator.first()
+        |> Expect.to_be_visible!()
+
+      count ->
+        Expect.to_have_count!(locator, count)
     end
 
-    script = "return [window.scrollX, window.scrollY]"
-
-    Browser.execute_script(session, script, [], callback)
+    page
   end
 
-  def assert_script_result(session, script, expected_result) do
-    callback = fn actual_result ->
-      if actual_result == expected_result do
-        session
-      else
-        raise Wallaby.ExpectationNotMetError,
-              "Expected script result to be #{inspect(expected_result)}, but got #{inspect(actual_result)}"
-      end
-    end
+  @doc """
+  Asserts that the element matching the CSS selector has focus.
+  """
+  def assert_focused(page, selector) do
+    page
+    |> Page.locator(selector)
+    |> Expect.to_be_focused!()
 
-    Browser.execute_script(session, script, [], callback)
+    page
   end
 
-  def assert_text(parent, text) when is_binary(text) do
-    Browser.assert_text(parent, text)
+  def assert_input_value(page, selector, expected_value) do
+    page
+    |> Page.locator(selector)
+    |> Expect.to_have_value!(expected_value)
+
+    page
   end
 
-  def assert_text(parent, regex) when is_regex(regex) do
-    if has_text?(parent, regex) do
-      parent
-    else
-      raise Wallaby.ExpectationNotMetError, "Text matching regex #{inspect(regex)} was not found."
-    end
+  @doc """
+  Asserts that `fun` raises an uncaught error in the page whose message contains
+  `expected_msg` (or matches it, when it's a regex).
+  """
+  def assert_js_error(page, expected_msg, fun) do
+    message =
+      fun
+      |> take_js_error()
+      |> Exception.message()
+
+    assert message =~ expected_msg,
+           "Expected an uncaught JavaScript error matching #{inspect(expected_msg)}, got: #{message}"
+
+    page
   end
 
-  def assert_text(parent, query, text) when is_binary(text) do
-    Browser.assert_text(parent, query, text)
+  def assert_public_comment(page, comment) do
+    regex = ~r/<!\-\-\s*#{Regex.escape(comment)}\s*\-\->/
 
-    # TODO: return Browser.assert_text/3 result
-    # once https://github.com/elixir-wallaby/wallaby/pull/792 is accepted.
-    parent
+    assert Page.content!(page) =~ regex,
+           "Expected to find public comment \"#{comment}\" in page content, but it was not found"
+
+    page
   end
 
-  def assert_text(parent, query, regex) when is_regex(regex) do
-    parent
-    |> Browser.find(query)
-    |> assert_text(regex)
+  def assert_scroll_position(page, x, y) do
+    assert_script_result(page, "return [window.scrollX, window.scrollY]", [x, y])
+  end
 
-    parent
+  @doc """
+  Asserts that the script's result becomes `expected_result`, retrying the script
+  until it does.
+  """
+  def assert_script_result(page, script, expected_result) do
+    Expect.poll!(fn -> script_result(page, script) end, &assert(&1 == expected_result))
+    page
+  end
+
+  @doc """
+  Asserts that no element matches the CSS selector, visible or not.
+  """
+  def assert_none(page, selector) do
+    page
+    |> Page.locator(selector)
+    |> Expect.to_have_count!(0)
+
+    page
+  end
+
+  @doc """
+  Asserts that the page, or the element matching the CSS selector, shows the text
+  (or text matching the regex).
+  """
+  def assert_text(page, text) do
+    assert_text(page, "body", text)
+  end
+
+  def assert_text(page, selector, text) do
+    page
+    |> locator(selector)
+    |> Expect.to_contain_text!(text, use_inner_text: true)
+
+    page
+  end
+
+  @doc """
+  Asserts that the page's URL becomes the given one, or matches the regex.
+  """
+  def assert_url(page, url) do
+    Expect.to_have_url!(page, url)
+    page
   end
 
   @doc """
@@ -208,47 +215,84 @@ defmodule HologramFeatureTests.Helpers do
     |> Enum.sort()
   end
 
-  def cookies(session) do
-    session
-    |> Browser.cookies()
-    |> Enum.sort_by(& &1["name"], :asc)
+  @doc """
+  Clicks the element matching the CSS selector (or the locator).
+  """
+  def click(page, selector) do
+    page
+    |> locator(selector)
+    |> Locator.click!()
+
+    page
   end
 
   @doc """
-  Returns the `instance_id` of the given `session`'s browser.
+  Clicks the button with the given accessible name.
+  """
+  def click_button(page, name) do
+    page
+    |> Page.get_by_role(:button, name: name, exact: true)
+    |> Locator.click!()
+
+    page
+  end
+
+  @doc """
+  Clicks the link with the given accessible name.
+  """
+  def click_link(page, name) do
+    page
+    |> Page.get_by_role(:link, name: name, exact: true)
+    |> Locator.click!()
+
+    page
+  end
+
+  @doc """
+  Returns the cookies of the page's context, sorted by name.
+  """
+  def cookies(page) do
+    page
+    |> Page.context()
+    |> BrowserContext.cookies!()
+    |> Enum.sort_by(& &1.name)
+  end
+
+  @doc """
+  Returns the `instance_id` of the given page's browser.
 
   Read from the browser's own JS context rather than from the registry, so it
   holds however many connections are registered, and keeps working when this
   one has no registry entry - after `simulate_sse_disconnect/1`, or before the
   stream has attached.
   """
-  @spec current_instance_id(Wallaby.Session.t()) :: String.t()
-  def current_instance_id(session) do
-    script_result(session, "return globalThis.Hologram.instanceId;")
+  @spec current_instance_id(Page.t()) :: String.t()
+  def current_instance_id(page) do
+    script_result(page, "return globalThis.Hologram.instanceId;")
   end
 
   @doc """
-  Returns the `session_id` recorded for the given `session`'s connection, or
-  `nil` when it has no registry entry.
+  Returns the `session_id` recorded for the given page's connection, or `nil`
+  when it has no registry entry.
   """
-  @spec current_session_id(Wallaby.Session.t()) :: term
-  def current_session_id(session) do
-    case registry_entry(session) do
+  @spec current_session_id(Page.t()) :: term
+  def current_session_id(page) do
+    case registry_entry(page) do
       nil -> nil
       entry -> entry.session_id
     end
   end
 
   @doc """
-  Returns the `user_id` recorded for the given `session`'s connection, or `nil`
-  when it has no registry entry.
+  Returns the `user_id` recorded for the given page's connection, or `nil` when
+  it has no registry entry.
 
   Returning `nil` rather than raising lets a poller keep waiting through the
   window where a connection has not attached yet, or has just been reaped.
   """
-  @spec current_user_id(Wallaby.Session.t()) :: term
-  def current_user_id(session) do
-    case registry_entry(session) do
+  @spec current_user_id(Page.t()) :: term
+  def current_user_id(page) do
+    case registry_entry(page) do
       nil -> nil
       entry -> entry.user_id
     end
@@ -279,82 +323,59 @@ defmodule HologramFeatureTests.Helpers do
   end
 
   @doc """
-  Executes a query for refute_has with optimized retry behavior.
-
-  - Returns immediately if element is NOT found (fast path for refute_has)
-  - Retries if element IS found, waiting for it to disappear
+  Runs the script in the page, as the body of a function: `return` gives its
+  result, and `args` are its `arguments`.
   """
-  def execute_refute_query(parent, query, start_time \\ nil) do
-    start_time = start_time || current_time()
-
-    case do_execute_query_once(parent, query) do
-      {:ok, _query} = found ->
-        # Element found - retry until it disappears or timeout
-        if timed_out?(start_time) do
-          found
-        else
-          execute_refute_query(parent, query, start_time)
-        end
-
-      {:error, :stale_reference} ->
-        # Retry on stale reference
-        execute_refute_query(parent, query, start_time)
-
-      {:error, :invalid_selector} = error ->
-        error
-
-      {:error, _not_found} = error ->
-        # Element not found - return immediately (fast path)
-        error
-    end
-  end
-
-  def go_back(session) do
-    Browser.execute_script(session, "history.back();")
-  end
-
-  def go_forward(session) do
-    Browser.execute_script(session, "history.forward();")
-  end
-
-  def has_text?(parent, text) when is_binary(text) do
-    Browser.has_text?(parent, text)
-  end
-
-  def has_text?(parent, regex) when is_regex(regex) do
-    result =
-      Browser.retry(fn ->
-        if Element.text(parent) =~ regex do
-          {:ok, true}
-        else
-          {:error, false}
-        end
-      end)
-
-    case result do
-      {:ok, true} ->
-        true
-
-      {:error, false} ->
-        false
-    end
+  def execute_script(page, script, args \\ []) do
+    script_result(page, script, args)
+    page
   end
 
   @doc """
-  Keeps the browser from putting the document the `session` shows into its back/forward cache,
-  so that coming back to it with Back or Forward loads a new document. Adds an `unload` listener,
-  which makes a page ineligible for Chrome's back/forward cache.
+  Fills the field matching the CSS selector with the value.
   """
-  def keep_out_of_back_forward_cache(session) do
-    Browser.execute_script(session, "window.addEventListener('unload', () => {});")
+  def fill_in(page, selector, with: value) do
+    page
+    |> locator(selector)
+    |> Locator.fill!(to_string(value))
+
+    page
+  end
+
+  def go_back(page) do
+    Page.go_back!(page)
+    page
+  end
+
+  def go_forward(page) do
+    Page.go_forward!(page)
+    page
+  end
+
+  def hover(page, selector) do
+    page
+    |> locator(selector)
+    |> Locator.hover!()
+
+    page
   end
 
   @doc """
-  Marks the document the `session` shows, so that `wait_for_unmarked_document/2` can tell when
+  Marks the document the `page` shows, so that `wait_for_unmarked_document/1` can tell when
   the browser has replaced it with a new one.
   """
-  def mark_document(session) do
-    Browser.execute_script(session, "globalThis.__hologramMarkedDocument = true;")
+  def mark_document(page) do
+    execute_script(page, "globalThis.__hologramMarkedDocument = true;")
+  end
+
+  @doc """
+  Opens a page in a new context of the browser: another user, with cookies and
+  storage of its own.
+  """
+  def new_session(browser) do
+    context = Browser.new_context!(browser)
+    track_js_errors(context)
+    BrowserContext.new_page!(context)
   end
 
   @doc """
@@ -395,126 +416,140 @@ defmodule HologramFeatureTests.Helpers do
   end
 
   @doc """
-  Custom refute_has that returns immediately when the element is not found.
-
-  Unlike Wallaby.Browser.refute_has/2 which always waits for max_wait_time,
-  this version:
-  - Returns immediately if the element is NOT present (fast path)
-  - Waits/retries if the element IS present, giving it time to disappear
+  Asserts that the CSS selector matches no visible element. `text:` narrows the
+  matches to the elements containing it.
 
   Pass `wait_time: ms` to assert absence only after waiting `ms` first, so an
   appearance arriving within that window is still caught.
   """
-  defmacro refute_has(parent, query, opts \\ []) do
-    quote do
-      parent = unquote(parent)
-      query = unquote(query)
+  def refute_has(page, selector, opts \\ []) do
+    if wait_time = opts[:wait_time], do: Page.wait_for_timeout!(page, wait_time)
 
-      case unquote(opts)[:wait_time] do
-        nil -> :ok
-        wait_time -> :timer.sleep(wait_time)
-      end
+    page
+    |> visible(selector, opts)
+    |> Expect.to_have_count!(0)
 
-      case execute_refute_query(parent, query) do
-        {:error, :invalid_selector} ->
-          raise Wallaby.QueryError, ErrorMessage.message(query, :invalid_selector)
-
-        {:error, _not_found} ->
-          parent
-
-        {:ok, query} ->
-          raise Wallaby.ExpectationNotMetError, ErrorMessage.message(query, :found)
-      end
-    end
+    page
   end
 
   @doc """
-  Refutes that the element matching `query` displays `text`. The negative
+  Refutes that an element matching the CSS selector displays `text`. The negative
   counterpart to `assert_text/3`; accepts the same `opts` as `refute_has/3`.
   """
-  defmacro refute_text(parent, query, text, opts \\ []) do
-    quote do
-      text_query =
-        Map.update!(unquote(query), :conditions, &Keyword.put(&1, :text, unquote(text)))
-
-      refute_has(unquote(parent), text_query, unquote(opts))
-    end
+  def refute_text(page, selector, text, opts \\ []) do
+    refute_has(page, selector, Keyword.put(opts, :text, text))
   end
 
-  def reload(session) do
-    Browser.execute_script(session, "document.location.reload();")
+  def reload(page) do
+    Page.reload!(page)
+    page
   end
 
   @doc """
-  Executes a script and returns its result to the caller.
-
-  `Wallaby.Browser.execute_script/2` only exposes the result through a callback and returns the
-  session, so this wraps the underlying driver call that yields the value directly.
+  Runs the script in the page, as `execute_script/3` does, and returns its result.
   """
-  def script_result(session, script) do
-    {:ok, value} = session.driver.execute_script(session, script)
-    value
+  def script_result(page, script, args \\ []) do
+    Page.evaluate!(page, "(args) => (function () {\n#{script}\n}).apply(null, args)", args)
   end
 
-  def scroll_to(session, x, y) do
-    Browser.execute_script(session, "window.scrollTo(#{x}, #{y});")
+  def resize_window(page, width, height) do
+    Page.set_viewport_size!(page, %{width: width, height: height})
+    page
+  end
+
+  def scroll_to(page, x, y) do
+    execute_script(page, "window.scrollTo(#{x}, #{y});")
   end
 
   @doc """
-  Sends keys to the page (the active element), releasing any held modifier keys afterward.
-
-  Wallaby's session-level `send_keys/2` posts to the WebDriver `/keys` endpoint, where modifier keys
-  (Ctrl, Shift, ...) stay pressed across calls. A chord like `[:control, "k"]` would otherwise leave
-  Ctrl held, turning a later click into a Ctrl+click. The trailing `:null` (the WebDriver NULL key)
-  releases the modifiers so each call is self-contained.
+  Selects the option with the given value in the select element matching the CSS selector.
   """
-  def send_keys(session, keys) do
-    # credo:disable-for-next-line Credo.Check.Refactor.AppendSingleItem
-    Browser.send_keys(session, List.wrap(keys) ++ [:null])
+  def select_option(page, selector, value) do
+    page
+    |> locator(selector)
+    |> Locator.select_option!(value)
+
+    page
+  end
+
+  @doc """
+  Clears the field matching the CSS selector and types the value into it key by key,
+  for the tests that count the key events. Cleared from a script: Playwright clears a
+  field by pressing Delete, a key event of its own.
+  """
+  def type_in(page, selector, with: value) do
+    field = locator(page, selector)
+    Locator.evaluate!(field, "(field) => { field.value = ''; }")
+    Locator.press_sequentially!(field, to_string(value))
+
+    page
+  end
+
+  @doc """
+  Presses the key (or a chord such as `"Control+k"`) in the page, or in the element
+  matching the CSS selector.
+  """
+  def send_keys(page, key) do
+    page
+    |> Page.keyboard()
+    |> Keyboard.press!(key)
+
+    page
+  end
+
+  def send_keys(page, selector, key) do
+    page
+    |> locator(selector)
+    |> Locator.press!(key)
+
+    page
+  end
+
+  @doc """
+  Sets a cookie for the app's URL in the page's context.
+  """
+  def set_cookie(page, name, value) do
+    page
+    |> Page.context()
+    |> BrowserContext.add_cookies!([%{name: name, value: value, url: Endpoint.url()}])
+
+    page
   end
 
   @doc """
   Shortens the SSE heartbeat for this browser's next stream to `interval_ms`, then
-  returns the `session` so the helper can be piped.
+  returns the `page` so the helper can be piped.
 
   A stream that dies without closing is only noticed by the client's heartbeat
   watchdog, two intervals after the last heartbeat. At the production interval that
   is longer than the wait budget, so a test that kills the stream and waits for the
   reconnect asks for a shorter one.
 
-  Scoped by cookie, so concurrently running test files are unaffected. Navigates
-  to a blank page first, since a cookie cannot be set before the browser holds a
-  document.
+  Scoped by cookie, so concurrently running test files are unaffected.
   """
-  @spec simulate_fast_sse_heartbeat(Wallaby.Session.t(), pos_integer) :: Wallaby.Session.t()
-  def simulate_fast_sse_heartbeat(session, interval_ms) do
-    session
-    |> visit("/external")
-    |> Browser.set_cookie(SSE.heartbeat_interval_cookie(), to_string(interval_ms))
+  @spec simulate_fast_sse_heartbeat(Page.t(), pos_integer) :: Page.t()
+  def simulate_fast_sse_heartbeat(page, interval_ms) do
+    set_cookie(page, SSE.heartbeat_interval_cookie(), to_string(interval_ms))
   end
 
   @doc """
   Arms a delay on every page bundle this browser fetches from now on, then
-  returns the `session` so the helper can be piped.
+  returns the `page` so the helper can be piped.
 
   A navigation shows the destination as soon as the server describes it and
   mounts it once its bundle arrives. Over a local loop those two are
   milliseconds apart, which is too narrow for a test to act in between. This
   widens the gap to `delay_ms`.
 
-  Scoped by cookie, so concurrently running test files are unaffected. Navigates
-  to a blank page first, since a cookie cannot be set before the browser holds a
-  document.
+  Scoped by cookie, so concurrently running test files are unaffected.
   """
-  @spec simulate_slow_page_bundle(Wallaby.Session.t(), pos_integer) :: Wallaby.Session.t()
-  def simulate_slow_page_bundle(session, delay_ms) do
-    session
-    |> visit("/external")
-    |> Browser.set_cookie(SlowPageBundle.cookie(), to_string(delay_ms))
+  @spec simulate_slow_page_bundle(Page.t(), pos_integer) :: Page.t()
+  def simulate_slow_page_bundle(page, delay_ms) do
+    set_cookie(page, SlowPageBundle.cookie(), to_string(delay_ms))
   end
 
   @doc """
-  Arms a delay on this browser's next SSE attach, then returns the `session` so
+  Arms a delay on this browser's next SSE attach, then returns the `page` so
   the helper can be piped.
 
   Holds the stream open long enough for a command dispatched during page boot to
@@ -523,15 +558,11 @@ defmodule HologramFeatureTests.Helpers do
   wins: the client calls `Sse.connect()` synchronously at mount while the action
   queued by `init/3` is dispatched a tick later.
 
-  Scoped by cookie, so concurrently running test files are unaffected. Navigates
-  to a blank page first, since a cookie cannot be set before the browser holds a
-  document.
+  Scoped by cookie, so concurrently running test files are unaffected.
   """
-  @spec simulate_slow_sse_attach(Wallaby.Session.t(), pos_integer) :: Wallaby.Session.t()
-  def simulate_slow_sse_attach(session, delay_ms) do
-    session
-    |> visit("/external")
-    |> Browser.set_cookie(SSE.attach_delay_cookie(), to_string(delay_ms))
+  @spec simulate_slow_sse_attach(Page.t(), pos_integer) :: Page.t()
+  def simulate_slow_sse_attach(page, delay_ms) do
+    set_cookie(page, SSE.attach_delay_cookie(), to_string(delay_ms))
   end
 
   @doc """
@@ -570,247 +601,181 @@ defmodule HologramFeatureTests.Helpers do
     :ok
   end
 
-  def sleep(session, duration) do
-    :timer.sleep(duration)
-    session
+  @doc """
+  Installs a fake clock in the page's context, which `run_for/2` advances. Time still
+  passes on it as it does, so only a test that waits out a client timer needs it. Install
+  it before the page is opened.
+  """
+  def install_clock(page) do
+    page
+    |> Page.clock()
+    |> Clock.install!()
+
+    page
   end
 
   @doc """
-  Reads the text content of the element matching `css_selector` and evaluates it as an Elixir term.
-
-  Intended for elements that render a value via `inspect/1`, so the test can compare the recorded
-  value field by field rather than against a formatted string.
+  Advances the page's clock (see `install_clock/1`) by `duration` ms, firing the timers
+  due by then.
   """
-  def term_at(session, css_selector) do
-    script = "return document.querySelector('#{css_selector}').textContent;"
+  def run_for(page, duration) do
+    page
+    |> Page.clock()
+    |> Clock.run_for!(duration)
 
-    {term, _bindings} =
-      session
-      |> script_result(script)
-      |> Code.eval_string()
+    page
+  end
 
-    term
+  def sleep(page, duration) do
+    Page.wait_for_timeout!(page, duration)
+    page
   end
 
   @doc """
-  Visits `page_module` in `session` as a second tab of `origin`'s Hologram
-  session, by copying `origin`'s signed `phoenix_session` cookie into it.
-
-  Wallaby sessions have isolated cookie jars, so a second tab is otherwise a
-  separate session. A cookie can only be set once the browser is on the domain,
-  hence the throwaway `/external` visit (a plain page, no session/SSE) before
-  setting it; the final `visit/3` then loads the page carrying `origin`'s
-  cookie. Use it to give a connection a same-session sibling.
+  Opens `page_module` in a second tab of `origin`'s browser, which shares its
+  cookies and so its Hologram session. Use it to give a connection a same-session
+  sibling.
   """
-  def visit_as_sibling(session, origin, page_module, params \\ []) do
-    %{"value" => session_cookie} =
-      origin
-      |> cookies()
-      |> Enum.find(&(&1["name"] == "phoenix_session"))
-
-    session
-    |> visit("/external")
-    |> Browser.set_cookie("phoenix_session", session_cookie)
+  def visit_as_sibling(origin, page_module, params \\ []) do
+    origin
+    |> Page.context()
+    |> BrowserContext.new_page!()
     |> visit(page_module, params)
   end
 
   @doc """
   Blocks until the registry holds a connection for `instance_id`, then returns
-  `instance_id`. Raises if none appears within `@max_wait_time`.
+  `instance_id`. Raises if none appears within the expect timeout.
 
   Scoped to one instance, unlike `wait_for_subscription/5`, which counts every
   connection holding a channel and so can be satisfied by another tab.
   """
-  def wait_for_connection(instance_id, start_time \\ nil) do
-    start_time = start_time || current_time()
+  def wait_for_connection(instance_id) do
+    wait_until(
+      fn -> connection?(instance_id) end,
+      "Timed out waiting for a connection for instance #{inspect(instance_id)}"
+    )
 
-    cond do
-      connection?(instance_id) ->
-        instance_id
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for a connection for instance #{inspect(instance_id)}"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_connection(instance_id, start_time)
-    end
+    instance_id
   end
 
   @doc """
   Blocks until the registry no longer holds a connection for `instance_id`, then
   returns `instance_id`. Raises if the connection is still there after `max_wait_ms`.
 
-  Takes its own limit rather than `@max_wait_time`, because a test using it asserts
+  Takes its own limit rather than the expect timeout, because a test using it asserts
   how soon the connection goes, not only that it does.
   """
-  def wait_for_no_connection(instance_id, max_wait_ms, start_time \\ nil) do
-    start_time = start_time || current_time()
+  def wait_for_no_connection(instance_id, max_wait_ms) do
+    wait_until(
+      fn -> !connection?(instance_id) end,
+      "Connection for instance #{inspect(instance_id)} still registered after #{max_wait_ms} ms",
+      timeout: max_wait_ms
+    )
 
-    cond do
-      !connection?(instance_id) ->
-        instance_id
-
-      current_time() - start_time > max_wait_ms ->
-        raise Wallaby.ExpectationNotMetError,
-              "Connection for instance #{inspect(instance_id)} still registered after #{max_wait_ms} ms"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_no_connection(instance_id, max_wait_ms, start_time)
-    end
+    instance_id
   end
 
   @doc """
   Blocks until no `SubscriptionRegistry` entry holds a subscription on `channel`,
-  then returns the `session` so the helper can be piped. Pass a `cid` to narrow
+  then returns the `page` so the helper can be piped. Pass a `cid` to narrow
   the wait to a single `{channel, cid}` binding - needed to gate a single-cid
   `unsubscribe` whose channel keeps other cids bound, where the channel-wide
   wait would never return. Raises if the subscription persists past
-  `@max_wait_time`.
+  the expect timeout.
   """
-  def wait_for_no_subscription(session, channel, cid \\ nil, start_time \\ nil) do
-    start_time = start_time || current_time()
+  def wait_for_no_subscription(page, channel, cid \\ nil) do
+    wait_until(
+      fn -> !has_subscription?(channel, cid) end,
+      "Timed out waiting for subscription to drop on #{inspect(channel)} (cid: #{inspect(cid)})"
+    )
 
-    cond do
-      !has_subscription?(channel, cid) ->
-        session
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for subscription to drop on #{inspect(channel)} (cid: #{inspect(cid)})"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_no_subscription(session, channel, cid, start_time)
-    end
+    page
   end
 
   @doc """
-  Blocks until the `session`'s own connection holds a binding on `channel` - or,
+  Blocks until the `page`'s own connection holds a binding on `channel` - or,
   when `cid` is given, a `{channel, cid}` binding specifically - and can receive
-  broadcasts on it, then returns the `session`. Raises if it does not within
-  `@max_wait_time`.
+  broadcasts on it, then returns the `page`. Raises if it does not within
+  the expect timeout.
 
-  Resolves this browser's connection specifically. `wait_for_subscription/5`
-  counts every connection in the registry, so in a single-session test a tab
+  Resolves this browser's connection specifically. `wait_for_subscription/4`
+  counts every connection in the registry, so in a single-page test a tab
   left by an earlier test on the same channel can satisfy it before this
-  session's binding exists: a departed tab's SSE process is only reaped once a
+  page's binding exists: a departed tab's SSE process is only reaped once a
   write to its dead socket fails, which may not happen until the next heartbeat.
   """
-  def wait_for_own_subscription(session, channel, cid \\ nil, start_time \\ nil) do
-    start_time = start_time || current_time()
-    entry = registry_entry(session)
+  def wait_for_own_subscription(page, channel, cid \\ nil) do
+    wait_until(
+      fn ->
+        entry = registry_entry(page)
+        entry != nil and receiving?(entry, channel, cid)
+      end,
+      "Timed out waiting for this page's subscription on #{inspect(channel)} (cid: #{inspect(cid)})"
+    )
 
-    cond do
-      entry != nil and receiving?(entry, channel, cid) ->
-        session
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for this session's subscription on #{inspect(channel)} (cid: #{inspect(cid)})"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_own_subscription(session, channel, cid, start_time)
-    end
+    page
   end
 
   @doc """
   Blocks until at least `count` (default 1) `SubscriptionRegistry` connections
   hold a binding on `channel` - or, when `cid` is given, a `{channel, cid}`
-  binding specifically - then returns the `session` so the helper can be piped.
-  Raises if the count is not reached within `@max_wait_time`.
+  binding specifically - then returns the `page` so the helper can be piped.
+  Raises if the count is not reached within the expect timeout.
 
   Gate any broadcast whose recipients a test asserts on: subscriptions register
   asynchronously after the page mounts (handshake POST + SSE attach), and
   `Phoenix.PubSub` is fire-and-forget, so a broadcast that fires first reaches
   no one - a missed delivery, or a refute that passes vacuously because the
-  asserted-on session was never there. Pass `count` > 1 to require *every*
-  participating connection in a multi-session test. Pass a `cid` when several
+  asserted-on page was never there. Pass `count` > 1 to require *every*
+  participating connection in a multi-page test. Pass a `cid` when several
   bindings share one connection (e.g. multiple components on one page), where a
   connection count can't tell whether a specific cid is bound.
 
   A connection counts once its SSE process can receive broadcasts on `channel`,
   not merely once the registry records the binding. Every connection in the
   registry counts, a departed tab from an earlier test included, so a
-  single-session test on a channel other tests use gates with
-  `wait_for_own_subscription/4` instead.
+  single-page test on a channel other tests use gates with
+  `wait_for_own_subscription/3` instead.
   """
-  def wait_for_subscription(session, channel, count \\ 1, cid \\ nil, start_time \\ nil) do
-    start_time = start_time || current_time()
+  def wait_for_subscription(page, channel, count \\ 1, cid \\ nil) do
+    wait_until(
+      fn -> subscription_count(channel, cid) >= count end,
+      "Timed out waiting for #{count} subscription(s) on #{inspect(channel)} (cid: #{inspect(cid)})"
+    )
 
-    cond do
-      subscription_count(channel, cid) >= count ->
-        session
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for #{count} subscription(s) on #{inspect(channel)} (cid: #{inspect(cid)})"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_subscription(session, channel, count, cid, start_time)
-    end
+    page
   end
 
   @doc """
   Blocks until the document `mark_document/1` marked has been replaced with a new one, then
-  returns the `session`. Raises if that does not happen within `@max_wait_time`.
+  returns the `page`.
   """
-  def wait_for_unmarked_document(session, start_time \\ nil) do
-    start_time = start_time || current_time()
+  def wait_for_unmarked_document(page) do
+    Page.wait_for_function!(page, "() => globalThis.__hologramMarkedDocument !== true")
 
-    cond do
-      script_result(session, "return globalThis.__hologramMarkedDocument !== true;") ->
-        session
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for the browser to load a new document"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_unmarked_document(session, start_time)
-    end
+    page
   end
 
   @doc """
-  Blocks until the `session`'s own SSE process records `user_id`, then returns
-  the `session`. Gates on a handler-driven identity change (login or logout)
+  Blocks until the `page`'s own SSE process records `user_id`, then returns
+  the `page`. Gates on a handler-driven identity change (login or logout)
   having propagated to the connection before its effects are asserted - e.g.
   before broadcasting to check whether a binding was kept or dropped. Raises if
-  the value does not appear within `@max_wait_time`.
+  the value does not appear within the expect timeout.
 
   Resolves this browser's connection specifically, so another tab of the same
   session lingering in the registry does not affect it. A departed tab's SSE
   process is only reaped once a write to its dead socket fails, which may not
   happen until the next heartbeat.
   """
-  def wait_for_user_id(session, user_id, start_time \\ nil) do
-    start_time = start_time || current_time()
+  def wait_for_user_id(page, user_id) do
+    wait_until(
+      fn -> current_user_id(page) == user_id end,
+      "Timed out waiting for connection user_id #{inspect(user_id)}"
+    )
 
-    cond do
-      current_user_id(session) == user_id ->
-        session
-
-      timed_out?(start_time) ->
-        raise Wallaby.ExpectationNotMetError,
-              "Timed out waiting for connection user_id #{inspect(user_id)}"
-
-      true ->
-        :timer.sleep(100)
-        wait_for_user_id(session, user_id, start_time)
-    end
-  end
-
-  defp apply_at(query, elements) do
-    case {Query.at_number(query), length(elements)} do
-      {:all, _count} -> {:ok, elements}
-      {n, count} when n < count -> {:ok, [Enum.at(elements, n)]}
-      {_n, _count} -> {:error, {:not_found, elements}}
-    end
+    page
   end
 
   defp bound?(entry, channel, cid) do
@@ -829,57 +794,14 @@ defmodule HologramFeatureTests.Helpers do
     :ets.member(SubscriptionRegistry.ets_table_name(), instance_id)
   end
 
-  defp current_time do
-    :erlang.monotonic_time(:milli_seconds)
-  end
-
-  defp do_execute_query_once(%{driver: driver} = parent, query) do
-    with {:ok, %Query{} = query} <- Query.validate(query),
-         compiled_query <- Query.compile(query),
-         {:ok, elements} <- driver.find_elements(parent, compiled_query),
-         {:ok, elements} <- filter_by_visibility(query, elements),
-         {:ok, elements} <- filter_by_text(query, elements),
-         {:ok, elements} <- filter_by_selected(query, elements),
-         {:ok, elements} <- validate_count(query, elements),
-         {:ok, elements} <- apply_at(query, elements) do
-      {:ok, %Query{query | result: elements}}
-    end
-  rescue
-    StaleReferenceError ->
-      {:error, :stale_reference}
-  end
-
-  defp filter_by_selected(query, elements) do
-    case Query.selected?(query) do
-      :any -> {:ok, elements}
-      true -> {:ok, Enum.filter(elements, &Element.selected?(&1))}
-      false -> {:ok, Enum.reject(elements, &Element.selected?(&1))}
-    end
-  end
-
-  defp filter_by_text(query, elements) do
-    text = Query.inner_text(query)
-
-    if text do
-      {:ok, Enum.filter(elements, &text_matches?(&1, text))}
-    else
-      {:ok, elements}
-    end
-  end
-
-  defp filter_by_visibility(query, elements) do
-    case Query.visible?(query) do
-      :any -> {:ok, elements}
-      true -> {:ok, Enum.filter(elements, &Element.visible?(&1))}
-      false -> {:ok, Enum.reject(elements, &Element.visible?(&1))}
-    end
-  end
-
   defp has_subscription?(channel, cid) do
     SubscriptionRegistry.ets_table_name()
     |> :ets.tab2list()
     |> Enum.any?(fn {_instance_id, entry} -> bound?(entry, channel, cid) end)
   end
+
+  defp locator(page, selector) when is_binary(selector), do: Page.locator(page, selector)
+  defp locator(_page, %Locator{} = locator), do: locator
 
   # Whether the connection holds the binding and its SSE process has subscribed to
   # the channel's PubSub topic. The registry records a binding before the SSE
@@ -890,8 +812,8 @@ defmodule HologramFeatureTests.Helpers do
       Realtime.channel_topic(channel) in Registry.keys(Hologram.PubSub, entry.sse_pid)
   end
 
-  defp registry_entry(session) do
-    instance_id = current_instance_id(session)
+  defp registry_entry(page) do
+    instance_id = current_instance_id(page)
 
     case :ets.lookup(SubscriptionRegistry.ets_table_name(), instance_id) do
       [{^instance_id, entry}] -> entry
@@ -905,33 +827,24 @@ defmodule HologramFeatureTests.Helpers do
     |> Enum.count(fn {_instance_id, entry} -> receiving?(entry, channel, cid) end)
   end
 
-  defp text_matches?(%Element{driver: driver} = element, text) do
-    case driver.text(element) do
-      {:ok, element_text} -> element_text =~ ~r/#{Regex.escape(text)}/
-      {:error, _reason} -> false
+  # A locator of the visible elements matching the CSS selector, narrowed by `text:` to the
+  # ones containing it, case-sensitively.
+  defp visible(page, selector, opts) do
+    locator =
+      page
+      |> locator(selector)
+      |> Locator.filter(visible: true)
+
+    case opts[:text] do
+      nil -> locator
+      text when is_binary(text) -> Locator.filter(locator, has_text: ~r/#{Regex.escape(text)}/)
+      regex -> Locator.filter(locator, has_text: regex)
     end
   end
 
-  defp timed_out?(start_time) do
-    current_time() - start_time > @max_wait_time
-  end
-
-  defp validate_count(query, elements) do
-    if Query.matches_count?(query, Enum.count(elements)) do
-      {:ok, elements}
-    else
-      {:error, {:not_found, elements}}
-    end
-  end
-
-  defp wait_for_js_error(session, start_time \\ nil) do
-    start_time = start_time || current_time()
-
-    Browser.execute_script(session, "1 + 1")
-
-    if !timed_out?(start_time) do
-      :timer.sleep(100)
-      wait_for_js_error(session, start_time)
-    end
+  # Polls `fun` until it returns a truthy value, failing with `message` after the expect
+  # timeout, or `timeout:`.
+  defp wait_until(fun, message, opts \\ []) do
+    Expect.poll!(fun, &assert(&1, message), opts)
   end
 end

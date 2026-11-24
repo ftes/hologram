@@ -3,9 +3,9 @@ defmodule HologramCowboyTests.PageTest do
 
   alias HologramCowboyTests.PlainPage
 
-  feature "a page request is served", %{session: session} do
-    session
+  test "a page request is served", %{page: page} do
+    page
     |> visit(PlainPage)
-    |> assert_text(css("#text"), "Served through Cowboy")
+    |> assert_text("#text", "Served through Cowboy")
   end
 end

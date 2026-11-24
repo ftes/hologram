@@ -11,10 +11,10 @@ defmodule HologramEcosystemTests.Ash.ItemPageTest do
   @money_to_string {String.Chars.Money, :to_string, 1}
   @number_to_string {Localize.Number, :to_string, 2}
 
-  feature "the title taken out of the record renders", %{session: session} do
-    session
+  test "the title taken out of the record renders", %{page: page} do
+    page
     |> visit(ItemPage)
-    |> assert_text(css("#title"), "title")
+    |> assert_text("#title", "title")
   end
 
   test "the money type's chunks define its struct functions" do

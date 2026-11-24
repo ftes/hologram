@@ -7,8 +7,7 @@ config :hologram_feature_tests, HologramFeatureTestsWeb.Endpoint,
 # HOLOGRAM_FEATURE_TESTS_HTTPS serves the same app over TLS, where Chrome negotiates
 # HTTP/2 - Bandit offers it over TLS by default. Tests touching the SSE stream then run
 # against Bandit's other protocol, whose stream lifecycle is unlike HTTP/1.1's.
-# Endpoint.url/0 follows the listener, and Wallaby follows Endpoint.url/0, so nothing
-# else changes.
+# The Playwright base URL below follows the listener, so nothing else changes.
 #
 # The cert is a test-only self-signed pair made with OpenSSL, not `mix phx.gen.cert`:
 #
@@ -41,35 +40,29 @@ config :logger, level: :warning
 # outside the test env.
 config :hologram, :__sse_test_seams_enabled__, true
 
-config :wallaby,
-  chromedriver: [
-    # Optimize for GithHub Actions CI environment, see: https://github.com/elixir-wallaby/wallaby/issues/468#issuecomment-1113520767
-    capabilities: %{
-      chromeOptions: %{
-        args: [
-          "--disable-background-timer-throttling",
-          "--disable-dev-shm-usage",
-          # A fresh profile asks Google for the time at startup, and the reply rebuilds the
-          # certificate verifier, which drops every HTTP/2 session with
-          # ERR_CERT_VERIFIER_CHANGED. That killed the first page load of a test now and
-          # then in the HTTPS job, where Chrome speaks HTTP/2.
-          "--disable-features=NetworkTimeServiceQuerying",
-          "--disable-gpu",
-          "--fullscreen",
-          "--headless",
-          # Accepts the self-signed cert of the HTTPS listener above.
-          "--ignore-certificate-errors",
-          "--no-sandbox",
-          "--user-agent=Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36",
-          "--window-size=1280,800"
-        ]
-      }
-    }
-  ],
-  driver: Wallaby.Chrome,
-  # Fixes occasional HTTPoison timeouts, see: https://github.com/elixir-wallaby/wallaby/issues/365
-  hackney_options: [timeout: 60_000, recv_timeout: 60_000],
-  max_wait_time: 30_000,
-  otp_app: :hologram_feature_tests,
-  screenshot_dir: "./tmp/screenshots",
-  screenshot_on_failure: true
+config :playwright, :test,
+  base_url: "http://localhost:4002",
+  action_timeout: 30_000,
+  expect: [timeout: 30_000],
+  navigation_timeout: 30_000,
+  screenshot: :only_on_failure,
+  trace: :retain_on_failure,
+  # The window size the suite was written against.
+  viewport: %{width: 1280, height: 800}
+
+if System.get_env("HOLOGRAM_FEATURE_TESTS_HTTPS") do
+  config :playwright, :test,
+    base_url: "https://localhost:4002",
+    launch_options: [
+      args: [
+        # Trusts the self-signed cert of the HTTPS listener above, by the SHA-256 of its
+        # public key. Ignoring the cert error instead (ignore_https_errors) keeps every page
+        # out of Chrome's HTTP cache, and Playwright's Chrome has no back/forward cache, so
+        # Back would load a page afresh rather than restore it. Made with:
+        #
+        #   openssl x509 -in priv/cert/selfsigned.pem -pubkey -noout |
+        #     openssl pkey -pubin -outform der | openssl dgst -sha256 -binary | base64
+        "--ignore-certificate-errors-spki-list=qg6CVLnxX7fFhxDpY37sTG3B7B1uLbNB6gczT/cLFz0="
+      ]
+    ]
+end

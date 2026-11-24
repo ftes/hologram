@@ -18,9 +18,9 @@ defmodule HologramFeatureTests.LiveReloadTest do
   # How long a tab has to not reload before it counts as not reloading.
   @no_reload_wait_ms 1_000
 
-  @overlay css("#hologram-live-reload-error-overlay")
+  @overlay "#hologram-live-reload-error-overlay"
 
-  @phoenix_reload_frame css(~s(iframe[src*="/phoenix/live_reload/frame"]))
+  @phoenix_reload_frame ~s(iframe[src*="/phoenix/live_reload/frame"])
 
   @reload_timeout_ms 10_000
 
@@ -42,8 +42,8 @@ defmodule HologramFeatureTests.LiveReloadTest do
     Path.join(Reflection.bundles_dir(), bundle_file_name)
   end
 
-  defp computed_color(session) do
-    script_result(session, "return getComputedStyle(document.getElementById('styled')).color;")
+  defp computed_color(page) do
+    script_result(page, "return getComputedStyle(document.getElementById('styled')).color;")
   end
 
   # The static path `mix phx.digest` gives a copy of the Page4 stylesheet in the given color: the
@@ -89,15 +89,6 @@ defmodule HologramFeatureTests.LiveReloadTest do
     end)
   end
 
-  # Every document load renders a new instance id, an in-app navigation keeps it. Read directly
-  # from the driver, since the tab may be between two documents when asked.
-  defp read_instance_id(session) do
-    case session.driver.execute_script(session, "return globalThis.Hologram.instanceId;") do
-      {:ok, instance_id} -> instance_id
-      _error -> nil
-    end
-  end
-
   # Rebuilds the asset paths from the app's static dir and the bundles dir, as the server's start
   # does: the asset path registry, restarted, and the asset manifest the pages are rendered with.
   # The registry ends up as live reload's update after a change to the static files leaves it, and
@@ -123,97 +114,76 @@ defmodule HologramFeatureTests.LiveReloadTest do
     Application.app_dir(:hologram_feature_tests, "priv/static/assets/live_reload.css")
   end
 
-  defp wait_for_computed_color(session, color, start_time \\ nil) do
-    start_time = start_time || System.monotonic_time(:millisecond)
+  defp wait_for_computed_color(page, color) do
+    page
+    |> Page.locator("#styled")
+    |> Expect.to_have_css!("color", color, timeout: @reload_timeout_ms)
 
-    cond do
-      computed_color(session) == color ->
-        session
-
-      System.monotonic_time(:millisecond) - start_time > @reload_timeout_ms ->
-        flunk(
-          "The text did not turn #{color} within #{@reload_timeout_ms} ms, it is #{computed_color(session)}"
-        )
-
-      true ->
-        Process.sleep(100)
-        wait_for_computed_color(session, color, start_time)
-    end
+    page
   end
 
   # The path the stylesheet link Page4 rendered points at, read once the link it was kept as is the
   # only one left, with no swap copy next to it, and holds the given path.
-  defp wait_for_digest_stylesheet_path(session, path, start_time \\ nil) do
-    start_time = start_time || System.monotonic_time(:millisecond)
+  defp wait_for_digest_stylesheet_path(page, path) do
+    Page.wait_for_function!(
+      page,
+      """
+      (path) => {
+        const links = document.querySelectorAll('link[href*="live_reload_digest"]');
+        const link = globalThis.__digestStylesheetLink;
 
-    linked_path =
-      script_result(session, """
-      const links = document.querySelectorAll('link[href*="live_reload_digest"]');
-      const link = globalThis.__digestStylesheetLink;
+        return links.length === 1 && links[0] === link && new URL(link.href).pathname === path;
+      }
+      """,
+      path,
+      timeout: @reload_timeout_ms
+    )
 
-      return links.length === 1 && links[0] === link ? new URL(link.href).pathname : null;
-      """)
-
-    cond do
-      linked_path == path ->
-        session
-
-      System.monotonic_time(:millisecond) - start_time > @reload_timeout_ms ->
-        flunk("The stylesheet did not link #{path} within #{@reload_timeout_ms} ms")
-
-      true ->
-        Process.sleep(100)
-        wait_for_digest_stylesheet_path(session, path, start_time)
-    end
+    page
   end
 
-  defp wait_for_new_document(session, old_instance_id, start_time \\ nil) do
-    start_time = start_time || System.monotonic_time(:millisecond)
-    instance_id = read_instance_id(session)
+  # Every document load renders a new instance id, an in-app navigation keeps it.
+  defp wait_for_new_document(page, old_instance_id) do
+    Page.wait_for_function!(
+      page,
+      """
+      (oldInstanceId) => {
+        const instanceId = globalThis.Hologram?.instanceId;
 
-    cond do
-      instance_id not in [nil, old_instance_id] ->
-        session
+        return instanceId != null && instanceId !== oldInstanceId;
+      }
+      """,
+      old_instance_id,
+      timeout: @reload_timeout_ms
+    )
 
-      System.monotonic_time(:millisecond) - start_time > @reload_timeout_ms ->
-        flunk("The tab did not load a new document within #{@reload_timeout_ms} ms")
-
-      true ->
-        Process.sleep(100)
-        wait_for_new_document(session, old_instance_id, start_time)
-    end
+    page
   end
 
   # A swap is done once the copy that kept the page styled is gone and the link the page rendered
   # holds the fresh URL.
-  defp wait_for_stylesheet_swapped(session, start_time \\ nil) do
-    start_time = start_time || System.monotonic_time(:millisecond)
+  defp wait_for_stylesheet_swapped(page) do
+    Page.wait_for_function!(
+      page,
+      """
+      () => {
+        const links = document.querySelectorAll('link[href*="live_reload.css"]');
+        const link = globalThis.__stylesheetLink;
 
-    swapped? =
-      script_result(session, """
-      const links = document.querySelectorAll('link[href*="live_reload.css"]');
-      const link = globalThis.__stylesheetLink;
+        return links.length === 1 && links[0] === link && link.href.includes("_hologram_css");
+      }
+      """,
+      nil,
+      timeout: @reload_timeout_ms
+    )
 
-      return links.length === 1 && links[0] === link && link.href.includes("_hologram_css");
-      """)
-
-    cond do
-      swapped? ->
-        session
-
-      System.monotonic_time(:millisecond) - start_time > @reload_timeout_ms ->
-        flunk("The stylesheet swap did not finish within #{@reload_timeout_ms} ms")
-
-      true ->
-        Process.sleep(100)
-        wait_for_stylesheet_swapped(session, start_time)
-    end
+    page
   end
 
   defp write_digest_stylesheet(color) do
     @digest_stylesheet_static_path
     |> static_file_path()
-    |> File.write!(stylesheet_css(color))
+    |> write_static_file(stylesheet_css(color))
   end
 
   # Writes a copy of the Page4 stylesheet in the given color, under the name `mix phx.digest` gives
@@ -223,44 +193,52 @@ defmodule HologramFeatureTests.LiveReloadTest do
 
     copy_static_path
     |> static_file_path()
-    |> File.write!(stylesheet_css(color))
+    |> write_static_file(stylesheet_css(color))
 
     copy_static_path
   end
 
+  # Plug.Static tags a file with its size and mtime, in seconds, and the colors' CSS is the same
+  # length, so a rewrite within the second of the last write would keep the tag, and the browser
+  # its cached copy. Waiting out the second keeps the tags apart.
+  defp write_static_file(path, content) do
+    Process.sleep(1_000 - rem(System.os_time(:millisecond), 1_000) + 10)
+    File.write!(path, content)
+  end
+
   defp write_stylesheet(color) do
-    File.write!(stylesheet_path(), "#styled { color: #{color}; }\n")
+    write_static_file(stylesheet_path(), "#styled { color: #{color}; }\n")
   end
 
   describe "reload event" do
-    feature "a tab on a rebuilt page reloads", %{session: session} do
-      session = visit(session, Page1)
-      instance_id = current_instance_id(session)
+    test "a tab on a rebuilt page reloads", %{page: page} do
+      page = visit(page, Page1)
+      instance_id = current_instance_id(page)
 
       broadcast_live_reload({:reload, [Page1]})
 
-      session
+      page
       |> wait_for_new_document(instance_id)
       |> assert_page(Page1)
     end
 
-    feature "a tab on another page does not reload", %{session: session} do
-      session = visit(session, Page2)
-      instance_id = current_instance_id(session)
+    test "a tab on another page does not reload", %{page: page} do
+      page = visit(page, Page2)
+      instance_id = current_instance_id(page)
 
       broadcast_live_reload({:reload, [Page1]})
-      Process.sleep(@no_reload_wait_ms)
+      Page.wait_for_timeout!(page, @no_reload_wait_ms)
 
-      assert current_instance_id(session) == instance_id
+      assert current_instance_id(page) == instance_id
     end
 
-    feature "every tab reloads when the runtime bundle was rebuilt", %{session: session} do
-      session = visit(session, Page2)
-      instance_id = current_instance_id(session)
+    test "every tab reloads when the runtime bundle was rebuilt", %{page: page} do
+      page = visit(page, Page2)
+      instance_id = current_instance_id(page)
 
       broadcast_live_reload({:reload, :all})
 
-      session
+      page
       |> wait_for_new_document(instance_id)
       |> assert_page(Page2)
     end
@@ -279,32 +257,32 @@ defmodule HologramFeatureTests.LiveReloadTest do
       end)
     end
 
-    feature "applies the new CSS without reloading the tab", %{session: session} do
-      session =
-        session
+    test "applies the new CSS without reloading the tab", %{page: page} do
+      page =
+        page
         |> visit(Page3)
         |> wait_for_computed_color("rgb(255, 0, 0)")
 
-      instance_id = current_instance_id(session)
+      instance_id = current_instance_id(page)
 
       # Kept to tell that the swap gives the link element the page rendered the fresh URL rather
       # than replacing it.
-      execute_script(session, """
-      globalThis.__stylesheetLink = document.querySelector('link[href^="/assets/live_reload.css"]');
+      execute_script(page, """
+      globalThis.__stylesheetLink = document.querySelector('link[href*="/assets/live_reload.css"]');
       """)
 
       write_stylesheet("rgb(0, 0, 255)")
       broadcast_live_reload(:css_changed)
 
-      session
+      page
       |> wait_for_computed_color("rgb(0, 0, 255)")
       |> wait_for_stylesheet_swapped()
 
-      assert computed_color(session) == "rgb(0, 0, 255)"
+      assert computed_color(page) == "rgb(0, 0, 255)"
 
-      Process.sleep(@no_reload_wait_ms)
+      Page.wait_for_timeout!(page, @no_reload_wait_ms)
 
-      assert current_instance_id(session) == instance_id
+      assert current_instance_id(page) == instance_id
     end
   end
 
@@ -331,40 +309,40 @@ defmodule HologramFeatureTests.LiveReloadTest do
       end)
     end
 
-    feature "links the plain file over a digested copy that no longer holds its content", %{
-      session: session
+    test "links the plain file over a digested copy that no longer holds its content", %{
+      page: page
     } do
       write_digest_stylesheet("rgb(0, 128, 0)")
       write_digest_stylesheet_copy("rgb(255, 165, 0)")
       rebuild_asset_paths()
 
-      session
+      page
       |> visit(Page4)
       |> wait_for_computed_color("rgb(0, 128, 0)")
 
-      assert script_result(session, """
-             return document.querySelector('link[href*="live_reload_digest"]').getAttribute("href");
+      assert script_result(page, """
+             return new URL(document.querySelector('link[href*="live_reload_digest"]').href).pathname;
              """) == "/" <> @digest_stylesheet_static_path
     end
 
-    feature "swaps a stylesheet whose digested copy no longer holds its content to the plain file without reloading the tab",
-            %{session: session} do
+    test "swaps a stylesheet whose digested copy no longer holds its content to the plain file without reloading the tab",
+         %{page: page} do
       write_digest_stylesheet("rgb(128, 0, 128)")
       copy_static_path = write_digest_stylesheet_copy("rgb(128, 0, 128)")
       rebuild_asset_paths()
 
-      session =
-        session
+      page =
+        page
         |> visit(Page4)
         |> wait_for_computed_color("rgb(128, 0, 128)")
 
-      instance_id = current_instance_id(session)
+      instance_id = current_instance_id(page)
 
-      assert script_result(session, """
-             return document.querySelector('link[href*="live_reload_digest"]').getAttribute("href");
+      assert script_result(page, """
+             return new URL(document.querySelector('link[href*="live_reload_digest"]').href).pathname;
              """) == "/" <> copy_static_path
 
-      execute_script(session, """
+      execute_script(page, """
       globalThis.__digestStylesheetLink = document.querySelector('link[href*="live_reload_digest"]');
       """)
 
@@ -372,175 +350,176 @@ defmodule HologramFeatureTests.LiveReloadTest do
       rebuild_asset_paths()
       broadcast_live_reload(:css_changed)
 
-      session
+      page
       |> wait_for_computed_color("rgb(0, 128, 128)")
       |> wait_for_digest_stylesheet_path("/" <> @digest_stylesheet_static_path)
+      # The link loads the plain file again after the swap, so polled.
+      |> wait_for_computed_color("rgb(0, 128, 128)")
 
-      assert computed_color(session) == "rgb(0, 128, 128)"
+      Page.wait_for_timeout!(page, @no_reload_wait_ms)
 
-      Process.sleep(@no_reload_wait_ms)
-
-      assert current_instance_id(session) == instance_id
+      assert current_instance_id(page) == instance_id
 
       # A render after the swap links the plain file too: the tab took the new asset paths.
-      session
-      |> click(button("Increment"))
-      |> assert_has(css("#count", text: "1"))
+      page
+      |> click_button("Increment")
+      |> assert_has("#count", text: "1")
 
-      assert script_result(session, """
+      assert script_result(page, """
              const links = document.querySelectorAll('link[href*="live_reload_digest"]');
 
              return Array.from(links, (link) => new URL(link.href).pathname);
              """) == ["/" <> @digest_stylesheet_static_path]
 
-      assert computed_color(session) == "rgb(0, 128, 128)"
+      # The render recreates the link, which loads the plain file afresh, so polled.
+      wait_for_computed_color(page, "rgb(0, 128, 128)")
     end
   end
 
   describe "Phoenix's live reload frame" do
     # The server sends the page with the frame, as Phoenix's live reload plug does in dev. Until
     # #1380 the first render removes it anyway, along with every other node it did not render.
-    feature "is removed from the page", %{session: session} do
-      session = visit(session, Page3)
+    test "is removed from the page", %{page: page} do
+      page = visit(page, Page3)
 
-      assert script_result(session, "return fetch(location.pathname).then(r => r.text());") =~
+      assert script_result(page, "return fetch(location.pathname).then(r => r.text());") =~
                "/phoenix/live_reload/frame"
 
-      refute_has(session, @phoenix_reload_frame)
+      refute_has(page, @phoenix_reload_frame)
     end
   end
 
   describe "compilation error event" do
-    feature "shows the compilation error", %{session: session} do
-      session = visit(session, Page1)
+    test "shows the compilation error", %{page: page} do
+      page = visit(page, Page1)
 
       broadcast_live_reload({:compilation_error, [[%{text: "boom", tone: "banner"}]]})
 
-      assert_text(session, @overlay, "boom")
+      assert_text(page, @overlay, "boom")
     end
   end
 
   describe "compiled event" do
-    feature "takes the compilation error down without reloading the tab", %{session: session} do
-      session = visit(session, Page1)
-      instance_id = current_instance_id(session)
+    test "takes the compilation error down without reloading the tab", %{page: page} do
+      page = visit(page, Page1)
+      instance_id = current_instance_id(page)
 
       broadcast_live_reload({:compilation_error, [[%{text: "boom", tone: "banner"}]]})
-      assert_has(session, @overlay)
+      assert_has(page, @overlay)
 
       broadcast_live_reload(:compiled)
-      refute_has(session, @overlay)
-      Process.sleep(@no_reload_wait_ms)
+      refute_has(page, @overlay)
+      Page.wait_for_timeout!(page, @no_reload_wait_ms)
 
-      assert current_instance_id(session) == instance_id
+      assert current_instance_id(page) == instance_id
     end
   end
 
   describe "navigating to a page whose code the tab holds" do
-    feature "loads the page afresh when the server has rebuilt it since", %{session: session} do
-      session =
-        session
+    test "loads the page afresh when the server has rebuilt it since", %{page: page} do
+      page =
+        page
         |> visit(Page1)
-        |> click(link("Page 2 link"))
+        |> click_link("Page 2 link")
         |> assert_page(Page2)
-        |> click(link("Page 1 link"))
+        |> click_link("Page 1 link")
         |> assert_page(Page1)
 
-      instance_id = current_instance_id(session)
+      instance_id = current_instance_id(page)
 
       give_page_another_digest(Page2)
 
-      session
-      |> click(link("Page 2 link"))
+      page
+      |> click_link("Page 2 link")
       |> wait_for_new_document(instance_id)
       |> assert_page(Page2)
     end
 
-    feature "navigates in the app when the page is current", %{session: session} do
-      session =
-        session
+    test "navigates in the app when the page is current", %{page: page} do
+      page =
+        page
         |> visit(Page1)
-        |> click(link("Page 2 link"))
+        |> click_link("Page 2 link")
         |> assert_page(Page2)
-        |> click(link("Page 1 link"))
+        |> click_link("Page 1 link")
         |> assert_page(Page1)
 
-      instance_id = current_instance_id(session)
+      instance_id = current_instance_id(page)
 
-      session
-      |> click(link("Page 2 link"))
+      page
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
 
-      assert current_instance_id(session) == instance_id
+      assert current_instance_id(page) == instance_id
     end
   end
 
   describe "going back to a page" do
-    feature "reloads it with fresh state when its snapshot was taken with other code", %{
-      session: session
+    test "reloads it with fresh state when its snapshot was taken with other code", %{
+      page: page
     } do
-      session =
-        session
+      page =
+        page
         |> visit(Page1)
-        |> click(button("Increment"))
-        |> assert_text(css("#count"), "1")
-        |> click(link("Page 2 link"))
+        |> click_button("Increment")
+        |> assert_text("#count", "1")
+        |> click_link("Page 2 link")
         |> assert_page(Page2)
 
-      instance_id = current_instance_id(session)
+      instance_id = current_instance_id(page)
 
       give_page_another_digest(Page1)
 
-      session
+      page
       |> go_back()
       |> wait_for_new_document(instance_id)
       |> assert_page(Page1)
-      |> assert_text(css("#count"), "0")
+      |> assert_text("#count", "0")
     end
 
     # Returning from outside the app loads a new document, which restores the page's snapshot
     # rather than mounting from mount data. The snapshot it saves on leaving has to carry the
     # document's digest all the same, or a later rebuild would go unnoticed on the way back.
-    feature "reloads it when it was rebuilt since a document restored it", %{session: session} do
-      session =
-        session
+    test "reloads it when it was rebuilt since a document restored it", %{page: page} do
+      page =
+        page
         |> visit(Page1)
-        |> click(link("Page 2 link"))
+        |> click_link("Page 2 link")
         |> assert_page(Page2)
         |> visit("/external")
         |> assert_text("External Page")
         |> go_back()
         |> assert_page(Page2)
-        |> click(link("Page 1 link"))
+        |> click_link("Page 1 link")
         |> assert_page(Page1)
 
-      instance_id = current_instance_id(session)
+      instance_id = current_instance_id(page)
 
       give_page_another_digest(Page2)
 
-      session
+      page
       |> go_back()
       |> wait_for_new_document(instance_id)
       |> assert_page(Page2)
     end
 
-    feature "restores its state when its snapshot fits the code", %{session: session} do
-      session =
-        session
+    test "restores its state when its snapshot fits the code", %{page: page} do
+      page =
+        page
         |> visit(Page1)
-        |> click(button("Increment"))
-        |> assert_text(css("#count"), "1")
-        |> click(link("Page 2 link"))
+        |> click_button("Increment")
+        |> assert_text("#count", "1")
+        |> click_link("Page 2 link")
         |> assert_page(Page2)
 
-      instance_id = current_instance_id(session)
+      instance_id = current_instance_id(page)
 
-      session
+      page
       |> go_back()
       |> assert_page(Page1)
-      |> assert_text(css("#count"), "1")
+      |> assert_text("#count", "1")
 
-      assert current_instance_id(session) == instance_id
+      assert current_instance_id(page) == instance_id
     end
   end
 end

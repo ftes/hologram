@@ -22,47 +22,46 @@ defmodule HologramFeatureTests.ProtocolChunksTest do
   @unnamed_to_string {String.Chars.HologramFeatureTests.UnnamedStructFixture, :to_string, 1}
 
   # The destination's chunks arrive with the navigation's payload here, not with a document.
-  feature "a struct in the state of a page navigated to renders", %{session: session} do
-    session
+  test "a struct in the state of a page navigated to renders", %{page: page} do
+    page
     |> visit(ProtocolChunksPage)
-    |> click(link("Server created structs"))
+    |> click_link("Server created structs")
     |> assert_page(ServerCreatedStructsPage)
-    |> assert_text(css("#init-result"), "struct(created in init)")
+    |> assert_text("#init-result", "struct(created in init)")
   end
 
-  feature "a struct whose type no code names renders after a client re-render", %{
-    session: session
+  test "a struct whose type no code names renders after a client re-render", %{
+    page: page
   } do
-    session
+    page
     |> visit(UnnamedStructPage)
-    |> assert_text(css("#unnamed"), "unnamed(created from a string)")
-    |> click(button("Relabel"))
-    |> assert_text(css("#label"), "relabeled")
-    |> assert_text(css("#unnamed"), "unnamed(created from a string)")
+    |> assert_text("#unnamed", "unnamed(created from a string)")
+    |> click_button("Relabel")
+    |> assert_text("#label", "relabeled")
+    |> assert_text("#unnamed", "unnamed(created from a string)")
   end
 
   # The first broadcast carries a struct whose chunk neither tab has, so its action waits for the
   # chunk while the second one, which needs none, is free to run. Realtime promises no order, so
   # the test asserts that both ran and nothing about which ran first. Do not make it assert an
   # order.
-  @sessions 2
-  feature "two broadcasts from one handler both run when the first brings a struct type the tab has not met",
-          %{sessions: [session_1, session_2]} do
+  test "two broadcasts from one handler both run when the first brings a struct type the tab has not met",
+       %{browser: browser, page: session_1} do
     session_1 = visit(session_1, PushedStructsPage)
-    session_2 = visit(session_2, PushedStructsPage)
+    session_2 = visit(new_session(browser), PushedStructsPage)
 
     # Both connections must be subscribed before the broadcast.
     wait_for_subscription(session_2, @pushed_channel, 2)
 
-    click(session_1, button("Push"))
+    click_button(session_1, "Push")
 
     # The originating tab gets both as self-echoes in the command's reply.
-    assert_text(session_1, css("#plain-result"), "plain")
-    assert_text(session_1, css("#struct-result"), "pushed struct(pushed)")
+    assert_text(session_1, "#plain-result", "plain")
+    assert_text(session_1, "#struct-result", "pushed struct(pushed)")
 
     # The other tab gets them as two events on its stream.
-    assert_text(session_2, css("#plain-result"), "plain")
-    assert_text(session_2, css("#struct-result"), "pushed struct(pushed)")
+    assert_text(session_2, "#plain-result", "plain")
+    assert_text(session_2, "#struct-result", "pushed struct(pushed)")
   end
 
   test "a page's document names the chunk of a struct its state holds, and none for a struct that arrives later" do

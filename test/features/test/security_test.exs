@@ -8,57 +8,57 @@ defmodule HologramFeatureTests.SecurityTest do
   alias HologramFeatureTests.Security.Page5
 
   describe "CSRF protection" do
-    feature "initial page request is successful", %{session: session} do
-      session
+    test "initial page request is successful", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Test Action 1"))
-      |> assert_text(css("#result"), "101")
+      |> click_button("Test Action 1")
+      |> assert_text("#result", "101")
     end
 
-    feature "subsequent page request is successful", %{session: session} do
-      session
+    test "subsequent page request is successful", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(link("Navigate to Page 2"))
+      |> click_link("Navigate to Page 2")
       |> assert_page(Page2)
-      |> click(button("Test Action 2"))
-      |> assert_text(css("#result"), "301")
+      |> click_button("Test Action 2")
+      |> assert_text("#result", "301")
     end
 
-    feature "command request is successful when CSRF token is valid", %{session: session} do
-      session
+    test "command request is successful when CSRF token is valid", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Test Command"))
-      |> assert_text(css("#result"), "201")
+      |> click_button("Test Command")
+      |> assert_text("#result", "201")
     end
 
-    feature "command request fails when CSRF token is invalid", %{session: session} do
-      assert_js_error session,
+    test "command request fails when CSRF token is invalid", %{page: page} do
+      assert_js_error page,
                       "command failed: 403",
                       fn ->
-                        session
+                        page
                         |> visit(Page1)
                         |> execute_script(
                           "globalThis.Hologram.csrfToken = 'invalid-token-12345';"
                         )
-                        |> click(button("Test Command"))
+                        |> click_button("Test Command")
                       end
     end
 
-    feature "command request fails when CSRF token is not present", %{session: session} do
-      assert_js_error session,
+    test "command request fails when CSRF token is not present", %{page: page} do
+      assert_js_error page,
                       "command failed: 403",
                       fn ->
-                        session
+                        page
                         |> visit(Page1)
                         |> execute_script("delete globalThis.Hologram.csrfToken;")
-                        |> click(button("Test Command"))
+                        |> click_button("Test Command")
                       end
     end
   end
 
   describe "XSS protection" do
-    feature "text nodes escaping", %{session: session} do
-      session
+    test "text nodes escaping", %{page: page} do
+      page
       |> visit(Page3)
       # no escaping
       |> assert_script_result("return window.xss1", true)
@@ -66,25 +66,25 @@ defmodule HologramFeatureTests.SecurityTest do
       |> assert_script_result("return window.xss2", nil)
       # server-side escaping
       |> assert_script_result("return window.xss3", nil)
-      |> click(button("Show script #4"))
+      |> click_button("Show script #4")
       # client-side escaping
       |> assert_script_result("return window.xss4", nil)
     end
 
-    feature "attributes escaping", %{session: session} do
-      session
+    test "attributes escaping", %{page: page} do
+      page
       |> visit(Page4)
       # server-side escaping
       |> assert_script_result("return window.xss1", nil)
-      |> click(button("Show div #2"))
+      |> click_button("Show div #2")
       # client-side escaping
       |> assert_script_result("return window.xss2", nil)
     end
 
-    feature "form inputs controlled attributes are not escaped", %{session: session} do
-      session
+    test "form inputs controlled attributes are not escaped", %{page: page} do
+      page
       |> visit(Page5)
-      |> click(button("Set values"))
+      |> click_button("Set values")
       |> assert_input_value("#text_input", "a < b")
       |> assert_input_value("#email_input", "c < d")
       |> assert_input_value("#textarea_input", "d < e")

@@ -19,11 +19,11 @@ defmodule HologramEcosystemTests.MixProject do
       {:ecto_sql, "~> 3.0"},
       {:ex_money_sql, "~> 2.0"},
       {:hologram,
-       git: "https://github.com/bartblast/hologram.git",
-       ref: "70ea141e0c70d777372d9639b0bba1fda1b48d11"},
+       git: "https://github.com/ftes/hologram.git",
+       ref: "6cc6eed1623dda243c008085086679197bb88501"},
       {:jason, "~> 1.0"},
       {:phoenix, "~> 1.7"},
-      {:wallaby, "~> 0.30", only: :test}
+      {:playwright, "~> 1.65.0-rc.4", hex: :playwright_ex, only: :test}
     ]
   end
 

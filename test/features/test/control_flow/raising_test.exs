@@ -3,45 +3,45 @@ defmodule HologramFeatureTests.ControlFlow.RaisingTest do
 
   alias HologramFeatureTests.ControlFlow.RaisingPage
 
-  feature "raise with module", %{session: session} do
-    assert_client_error session,
+  test "raise with module", %{page: page} do
+    assert_client_error page,
                         RuntimeError,
                         "my message",
                         fn ->
-                          session
+                          page
                           |> visit(RaisingPage)
-                          |> click(button("Raise Module"))
+                          |> click_button("Raise Module")
                         end
   end
 
-  feature "raise with string", %{session: session} do
-    assert_client_error session,
+  test "raise with string", %{page: page} do
+    assert_client_error page,
                         RuntimeError,
                         "my string",
                         fn ->
-                          session
+                          page
                           |> visit(RaisingPage)
-                          |> click(button("Raise String"))
+                          |> click_button("Raise String")
                         end
   end
 
-  feature "throw", %{session: session} do
-    assert_js_error session,
+  test "throw", %{page: page} do
+    assert_js_error page,
                     ~s/(throw) "my value"/,
                     fn ->
-                      session
+                      page
                       |> visit(RaisingPage)
-                      |> click(button("Throw"))
+                      |> click_button("Throw")
                     end
   end
 
-  feature "exit", %{session: session} do
-    assert_js_error session,
+  test "exit", %{page: page} do
+    assert_js_error page,
                     ~s/(exit) "my reason"/,
                     fn ->
-                      session
+                      page
                       |> visit(RaisingPage)
-                      |> click(button("Exit"))
+                      |> click_button("Exit")
                     end
   end
 end

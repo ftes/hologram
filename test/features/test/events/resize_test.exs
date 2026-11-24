@@ -3,13 +3,13 @@ defmodule HologramFeatureTests.Events.ResizeTest do
 
   alias HologramFeatureTests.Events.ResizePage
 
-  feature "the resize event payload carries an element's box sizes", %{session: session} do
-    session = visit(session, ResizePage)
+  test "the resize event payload carries an element's box sizes", %{page: page} do
+    page = visit(page, ResizePage)
 
     # The div is box-sizing: border-box with 10px padding and a 5px border, so resizing the border
     # box to 300 x 150 leaves a 270 x 120 content box. device_pixel_content_box_size is the content
     # box in device pixels, so it scales by the (read-back) device pixel ratio.
-    dpr = script_result(session, "return window.devicePixelRatio;")
+    dpr = script_result(page, "return window.devicePixelRatio;")
 
     expected =
       inspect(%{
@@ -21,22 +21,22 @@ defmodule HologramFeatureTests.Events.ResizeTest do
         }
       })
 
-    session
+    page
     |> execute_script("""
     const el = document.getElementById('resizable');
     el.style.width = '300px';
     el.style.height = '150px';
     """)
-    |> assert_text(css("#element_result"), expected)
+    |> assert_text("#element_result", expected)
   end
 
-  feature "the resize event payload is empty for a window resize", %{session: session} do
+  test "the resize event payload is empty for a window resize", %{page: page} do
     # The DOM resize event carries no size data of its own (the window's size properties are live
     # globals, not event data), so dispatching records an empty payload - which also proves the
     # window binding fired.
-    session
+    page
     |> visit(ResizePage)
     |> resize_window(700, 500)
-    |> assert_text(css("#window_result"), "%{}")
+    |> assert_text("#window_result", "%{}")
   end
 end

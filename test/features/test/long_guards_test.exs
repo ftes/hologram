@@ -5,59 +5,59 @@ defmodule HologramFeatureTests.LongGuardsTest do
   # The number of values in each of the page's lists - keep in step with @value_count there.
   @value_count 600
 
-  feature "atom list", %{session: session} do
-    session
+  test "atom list", %{page: page} do
+    page
     |> visit(LongGuardsPage)
-    |> click(button("Atom list"))
-    |> assert_text(css("#result"), ":atom_match")
+    |> click_button("Atom list")
+    |> assert_text("#result", ":atom_match")
   end
 
-  feature "binary list", %{session: session} do
-    session
+  test "binary list", %{page: page} do
+    page
     |> visit(LongGuardsPage)
-    |> click(button("Binary list"))
-    |> assert_text(css("#result"), ":binary_match")
+    |> click_button("Binary list")
+    |> assert_text("#result", ":binary_match")
   end
 
-  feature "case clause", %{session: session} do
-    session
+  test "case clause", %{page: page} do
+    page
     |> visit(LongGuardsPage)
-    |> click(button("Case clause"))
-    |> assert_text(css("#result"), ":case_match")
+    |> click_button("Case clause")
+    |> assert_text("#result", ":case_match")
   end
 
-  feature "fall through to the next clause", %{session: session} do
-    session
+  test "fall through to the next clause", %{page: page} do
+    page
     |> visit(LongGuardsPage)
-    |> click(button("Fall through"))
-    |> assert_text(css("#result"), ":binary_no_match")
+    |> click_button("Fall through")
+    |> assert_text("#result", ":binary_no_match")
   end
 
-  feature "integer list", %{session: session} do
-    session
+  test "integer list", %{page: page} do
+    page
     |> visit(LongGuardsPage)
-    |> click(button("Integer list"))
-    |> assert_text(css("#result"), ":integer_match")
+    |> click_button("Integer list")
+    |> assert_text("#result", ":integer_match")
   end
 
-  feature "loose chain", %{session: session} do
-    session
+  test "loose chain", %{page: page} do
+    page
     |> visit(LongGuardsPage)
-    |> click(button("Loose chain"))
-    |> assert_text(css("#result"), ":loose_match")
+    |> click_button("Loose chain")
+    |> assert_text("#result", ":loose_match")
   end
 
-  feature "mixed list", %{session: session} do
-    session
+  test "mixed list", %{page: page} do
+    page
     |> visit(LongGuardsPage)
-    |> click(button("Mixed list"))
-    |> assert_text(css("#result"), ":mixed_match")
+    |> click_button("Mixed list")
+    |> assert_text("#result", ":mixed_match")
   end
 
-  feature "no matching clause", %{session: session} do
+  test "no matching clause", %{page: page} do
     attempted_guard = Enum.map_join(1..@value_count, " or ", &~s(-x === "Zone/#{&1}"-))
 
-    assert_client_error session,
+    assert_client_error page,
                         FunctionClauseError,
                         build_function_clause_error_msg(
                           "HologramFeatureTests.LongGuardsPage.only_binaries/1",
@@ -65,9 +65,9 @@ defmodule HologramFeatureTests.LongGuardsTest do
                           ["def only_binaries(x) when #{attempted_guard}"]
                         ),
                         fn ->
-                          session
+                          page
                           |> visit(LongGuardsPage)
-                          |> click(button("No matching clause"))
+                          |> click_button("No matching clause")
                         end
   end
 end

@@ -22,79 +22,79 @@ defmodule HologramFeatureTests.TemplateSyntaxTest do
   @broadcast_channel :template_syntax_dynamic_component
 
   describe "nodes" do
-    feature "text and element", %{session: session} do
-      session
+    test "text and element", %{page: page} do
+      page
       |> visit(TextAndElementPage)
-      |> assert_has(css("div.parent_elem span.child_elem", text: "my text"))
+      |> assert_has("div.parent_elem span.child_elem", text: "my text")
     end
 
-    feature "component", %{session: session} do
-      session
+    test "component", %{page: page} do
+      page
       |> visit(ComponentPage)
-      |> assert_has(css("div#my_component", text: "abc"))
+      |> assert_has("div#my_component", text: "abc")
     end
   end
 
   describe "for block" do
-    feature "having items", %{session: session} do
-      session
+    test "having items", %{page: page} do
+      page
       |> visit(ForBlockPage)
       |> assert_count("#block_1 .item", 3)
-      |> assert_has(css("#block_1 #item_1.item", text: "text_1"))
-      |> assert_has(css("#block_1 #item_2.item", text: "text_2"))
-      |> assert_has(css("#block_1 #item_3.item", text: "text_3"))
+      |> assert_has("#block_1 #item_1.item", text: "text_1")
+      |> assert_has("#block_1 #item_2.item", text: "text_2")
+      |> assert_has("#block_1 #item_3.item", text: "text_3")
     end
 
-    feature "not having items", %{session: session} do
-      session
+    test "not having items", %{page: page} do
+      page
       |> visit(ForBlockPage)
-      |> assert_has(css("#block_2", text: "abcxyz"))
+      |> assert_has("#block_2", text: "abcxyz")
     end
   end
 
   describe "if block" do
-    feature "with truthy condition", %{session: session} do
-      session
+    test "with truthy condition", %{page: page} do
+      page
       |> visit(IfBlockPage)
-      |> assert_has(css("#block_1", text: "abc"))
+      |> assert_has("#block_1", text: "abc")
     end
 
-    feature "with falsy condition, having else subblock", %{session: session} do
-      session
+    test "with falsy condition, having else subblock", %{page: page} do
+      page
       |> visit(IfBlockPage)
-      |> assert_has(css("#block_2", text: "acd"))
+      |> assert_has("#block_2", text: "acd")
     end
 
-    feature "with falsy condition, not having else subblock", %{session: session} do
-      session
+    test "with falsy condition, not having else subblock", %{page: page} do
+      page
       |> visit(IfBlockPage)
-      |> assert_has(css("#block_3", text: "ac"))
+      |> assert_has("#block_3", text: "ac")
     end
   end
 
-  feature "raw block", %{session: session} do
-    session
+  test "raw block", %{page: page} do
+    page
     |> visit(RawBlockPage)
-    |> assert_has(css("body", text: "{%if false}abc{@var}xyz{/if}"))
+    |> assert_has("body", text: "{%if false}abc{@var}xyz{/if}")
   end
 
   describe "interpolation" do
-    feature "in text", %{session: session} do
-      session
+    test "in text", %{page: page} do
+      page
       |> visit(InterpolationPage)
-      |> assert_has(css("span.node_1", text: "a2c"))
+      |> assert_has("span.node_1", text: "a2c")
     end
 
-    feature "in attribute value", %{session: session} do
-      session
+    test "in attribute value", %{page: page} do
+      page
       |> visit(InterpolationPage)
-      |> assert_has(css("span.node_2", text: "xyz"))
+      |> assert_has("span.node_2", text: "xyz")
     end
 
-    feature "uses String.Chars protocol", %{session: session} do
-      session
+    test "uses String.Chars protocol", %{page: page} do
+      page
       |> visit(InterpolationPage)
-      |> assert_has(css("#string_chars_protocol", text: "1.2.3"))
+      |> assert_has("#string_chars_protocol", text: "1.2.3")
     end
 
     # The value is the page's, repeated here rather than read from it. Each run of the page's
@@ -103,10 +103,10 @@ defmodule HologramFeatureTests.TemplateSyntaxTest do
     # the script ran once - the client rendered the same text the server wrote, and hydration
     # adopted the element. The closing tag inside the value did not end the element, or the
     # marker it carries would be set.
-    feature "in script element", %{session: session} do
+    test "in script element", %{page: page} do
       value = ~s(</script><script>window.__xss = true</script> & "a" 'b' `c` ${d} e\\f\ng)
 
-      session
+      page
       |> visit(ScriptInterpolationPage)
       |> assert_script_result("return window.__scriptInterpolation;", [[value, value, value]])
       |> assert_script_result("return window.__xss;", nil)
@@ -118,14 +118,14 @@ defmodule HologramFeatureTests.TemplateSyntaxTest do
     # and backslash escapes, which the decode below undoes. The visibility assertion is the other
     # half: the closing tag inside the value did not end the element, or the rule it carries would
     # have hidden the div.
-    feature "in style element", %{session: session} do
+    test "in style element", %{page: page} do
       decode = """
       const css = window.__styleInterpolation.content;
       const decoded = css.slice(1, -1).replace(/\\\\(.)/g, "$1");
       return decoded === window.__styleInterpolationExpected;
       """
 
-      session
+      page
       |> visit(StyleInterpolationPage)
       |> assert_script_result(decode, true)
       |> assert_script_result("return window.__styleInterpolation.visibility;", "visible")
@@ -140,8 +140,8 @@ defmodule HologramFeatureTests.TemplateSyntaxTest do
   # bytes rather than the client's repair of them. The last assertion compares that text with what
   # the element holds after hydration: equal means the client rendered the same stylesheet and the
   # boot patch adopted it instead of rewriting it.
-  feature "inline stylesheet", %{session: session} do
-    session
+  test "inline stylesheet", %{page: page} do
+    page
     |> visit(InlineStylesheetPage)
     |> assert_script_result("return window.__inlineStylesheet.color;", "rgb(1, 2, 3)")
     |> assert_script_result("return window.__inlineStylesheet.content;", ~s("a & b"))
@@ -151,184 +151,181 @@ defmodule HologramFeatureTests.TemplateSyntaxTest do
     )
   end
 
-  feature "public comment", %{session: session} do
-    session
+  test "public comment", %{page: page} do
+    page
     |> visit(PublicCommentPage)
     |> assert_public_comment("my comment")
   end
 
   describe "attribute spread" do
-    feature "map value", %{session: session} do
-      session
+    test "map value", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_1[title='value_1']"))
+      |> assert_has("#scenario_1[title='value_1']")
     end
 
-    feature "keyword shorthand value", %{session: session} do
-      session
+    test "keyword shorthand value", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_2[title='value_2']"))
+      |> assert_has("#scenario_2[title='value_2']")
     end
 
-    feature "state value", %{session: session} do
-      session
+    test "state value", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_3[title='value_3']"))
+      |> assert_has("#scenario_3[title='value_3']")
     end
 
-    feature "nested value composes a dash-joined name", %{session: session} do
-      session
+    test "nested value composes a dash-joined name", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_4[data-user-id='value_4']"))
+      |> assert_has("#scenario_4[data-user-id='value_4']")
     end
 
-    feature "entry with nil value is not rendered", %{session: session} do
-      session
+    test "entry with nil value is not rendered", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_5[class='value_5']:not([title])"))
+      |> assert_has("#scenario_5[class='value_5']:not([title])")
     end
 
-    feature "literal attribute before the spread is overridden", %{session: session} do
-      session
+    test "literal attribute before the spread is overridden", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_6[title='value_6']"))
+      |> assert_has("#scenario_6[title='value_6']")
     end
 
-    feature "literal attribute after the spread wins", %{session: session} do
-      session
+    test "literal attribute after the spread wins", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_7[title='value_7']"))
+      |> assert_has("#scenario_7[title='value_7']")
     end
 
-    feature "later spread wins over an earlier one", %{session: session} do
-      session
+    test "later spread wins over an earlier one", %{page: page} do
+      page
       |> visit(AttributeSpreadPage)
-      |> assert_has(css("#scenario_8[title='value_8']"))
+      |> assert_has("#scenario_8[title='value_8']")
     end
   end
 
   describe "prop spread" do
-    feature "map value", %{session: session} do
-      session
+    test "map value", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_1", text: "prop_1 = value_1"))
+      |> assert_has("#scenario_1", text: "prop_1 = value_1")
     end
 
-    feature "keyword shorthand value", %{session: session} do
-      session
+    test "keyword shorthand value", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_2", text: "prop_1 = value_2"))
+      |> assert_has("#scenario_2", text: "prop_1 = value_2")
     end
 
-    feature "state value", %{session: session} do
-      session
+    test "state value", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_3", text: "prop_1 = value_3"))
+      |> assert_has("#scenario_3", text: "prop_1 = value_3")
     end
 
-    feature "undeclared keys are filtered out", %{session: session} do
-      session
+    test "undeclared keys are filtered out", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_4", text: "prop_1 = value_4"))
+      |> assert_has("#scenario_4", text: "prop_1 = value_4")
     end
 
-    feature "named prop before the spread is overridden", %{session: session} do
-      session
+    test "named prop before the spread is overridden", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_5", text: "prop_1 = value_5"))
+      |> assert_has("#scenario_5", text: "prop_1 = value_5")
     end
 
-    feature "named prop after the spread wins", %{session: session} do
-      session
+    test "named prop after the spread wins", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_6", text: "prop_1 = value_6"))
+      |> assert_has("#scenario_6", text: "prop_1 = value_6")
     end
 
-    feature "cid supplied through a spread initializes a stateful component", %{session: session} do
-      session
+    test "cid supplied through a spread initializes a stateful component", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_7", text: "my_state_value = value_7"))
+      |> assert_has("#scenario_7", text: "my_state_value = value_7")
     end
 
-    feature "forwarding wrapper spreads its map prop onto an inner element", %{session: session} do
-      session
+    test "forwarding wrapper spreads its map prop onto an inner element", %{page: page} do
+      page
       |> visit(PropSpreadPage)
-      |> assert_has(css("#scenario_8[title='value_8']", text: "forwarded"))
+      |> assert_has("#scenario_8[title='value_8']", text: "forwarded")
     end
   end
 
   describe "dynamic component" do
-    feature "named props", %{session: session} do
-      session
+    test "named props", %{page: page} do
+      page
       |> visit(DynamicComponentPage)
-      |> assert_has(css("#scenario_1", text: "prop_1 = value_1"))
+      |> assert_has("#scenario_1", text: "prop_1 = value_1")
     end
 
-    feature "spread props", %{session: session} do
-      session
+    test "spread props", %{page: page} do
+      page
       |> visit(DynamicComponentPage)
-      |> assert_has(css("#scenario_2", text: "prop_1 = value_2"))
+      |> assert_has("#scenario_2", text: "prop_1 = value_2")
     end
 
-    feature "slot content", %{session: session} do
-      session
+    test "slot content", %{page: page} do
+      page
       |> visit(DynamicComponentPage)
-      |> assert_has(css("#scenario_3", text: "slot content = value_3"))
+      |> assert_has("#scenario_3", text: "slot content = value_3")
     end
 
-    feature "module delivered from a command", %{session: session} do
-      session
+    test "module delivered from a command", %{page: page} do
+      page
       |> visit(DynamicComponentPage)
-      |> click(css("#scenario_4_button"))
-      |> assert_has(css("#scenario_4", text: "loaded from command"))
+      |> click("#scenario_4_button")
+      |> assert_has("#scenario_4", text: "loaded from command")
     end
 
     # The component is referenced only in the sender page's command/3, so the receiver
     # page can render it only if broadcast-referenced components reach the runtime bundle.
-    @sessions 2
-    feature "module delivered from a broadcast to another page", %{
-      sessions: [session_1, session_2]
-    } do
-      session_2 = visit(session_2, DynamicComponentBroadcastReceiverPage)
+    test "module delivered from a broadcast to another page", %{browser: browser, page: session_1} do
+      session_2 = visit(new_session(browser), DynamicComponentBroadcastReceiverPage)
       wait_for_subscription(session_2, @broadcast_channel)
 
       session_1
       |> visit(DynamicComponentBroadcastSenderPage)
-      |> click(css("#broadcast_button"))
+      |> click("#broadcast_button")
 
-      assert_has(session_2, css("#scenario_5", text: "delivered from broadcast"))
+      assert_has(session_2, "#scenario_5", text: "delivered from broadcast")
     end
 
     # The counts are incremented before each swap, so a swapped-in component showing
     # count = 0 proves the previous module's state was discarded rather than reused.
-    feature "module swap under a cid resets state", %{session: session} do
-      session
+    test "module swap under a cid resets state", %{page: page} do
+      page
       |> visit(DynamicComponentSwapPage)
-      |> assert_has(css("#component_7", text: "component_7 count = 0"))
-      |> click(css("#component_7_button"))
-      |> assert_has(css("#component_7", text: "component_7 count = 1"))
-      |> click(css("#swap_button"))
-      |> assert_has(css("#component_8", text: "component_8 count = 0"))
-      |> click(css("#component_8_button"))
-      |> assert_has(css("#component_8", text: "component_8 count = 1"))
-      |> click(css("#swap_button"))
-      |> assert_has(css("#component_7", text: "component_7 count = 0"))
+      |> assert_has("#component_7", text: "component_7 count = 0")
+      |> click("#component_7_button")
+      |> assert_has("#component_7", text: "component_7 count = 1")
+      |> click("#swap_button")
+      |> assert_has("#component_8", text: "component_8 count = 0")
+      |> click("#component_8_button")
+      |> assert_has("#component_8", text: "component_8 count = 1")
+      |> click("#swap_button")
+      |> assert_has("#component_7", text: "component_7 count = 0")
     end
   end
 
   describe "dynamic element" do
-    feature "tag name from state", %{session: session} do
-      session
+    test "tag name from state", %{page: page} do
+      page
       |> visit(DynamicElementPage)
-      |> assert_has(css("h2#scenario_1", text: "value_1"))
+      |> assert_has("h2#scenario_1", text: "value_1")
     end
 
-    feature "event binding", %{session: session} do
-      session
+    test "event binding", %{page: page} do
+      page
       |> visit(DynamicElementPage)
-      |> assert_has(css("#scenario_2_result", text: "clicked? = false"))
-      |> click(css("#scenario_2"))
-      |> assert_has(css("#scenario_2_result", text: "clicked? = true"))
+      |> assert_has("#scenario_2_result", text: "clicked? = false")
+      |> click("#scenario_2")
+      |> assert_has("#scenario_2_result", text: "clicked? = true")
     end
   end
 end

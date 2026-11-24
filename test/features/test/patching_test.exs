@@ -1,6 +1,4 @@
 defmodule HologramFeatureTests.PatchingTest do
-  # TODO: make the tests async when it's possible to set Wallaby max_wait_time per assert_has/2 or refute_has/2 call,
-  # or implement custom versions of assert_has/2 and refute_has/2 functions.
   use HologramFeatureTests.TestCase, async: true
 
   alias HologramFeatureTests.Patching.Page1
@@ -30,35 +28,26 @@ defmodule HologramFeatureTests.PatchingTest do
 
   @page20_rows ["row_1", "row_2", "row_3"]
 
-  setup do
-    current_max_wait_time = Application.fetch_env!(:wallaby, :max_wait_time)
-    Application.put_env(:wallaby, :max_wait_time, 3_000)
-
-    on_exit(fn ->
-      Application.put_env(:wallaby, :max_wait_time, current_max_wait_time)
-    end)
-  end
-
   # Reverses the page's lists, then removes the first row, checking after each that the rows of the
   # given kind of list kept their nodes, their order and their typed values. A typed value on the
   # first and last rows is what a node reused for another item would carry to the wrong row.
-  defp assert_rows_follow_their_items(session, page, kind) do
+  defp assert_rows_follow_their_items(page, page_module, kind) do
     rows = Enum.map(["alpha", "bravo", "charlie"], &"#{kind}_row_#{&1}")
 
-    session
-    |> visit(page)
-    |> assert_text(css("#result"), "alpha, bravo, charlie")
-    |> fill_in(css("##{kind}_input_alpha"), with: "typed alpha")
-    |> fill_in(css("##{kind}_input_charlie"), with: "typed charlie")
+    page
+    |> visit(page_module)
+    |> assert_text("#result", "alpha, bravo, charlie")
+    |> fill_in("##{kind}_input_alpha", with: "typed alpha")
+    |> fill_in("##{kind}_input_charlie", with: "typed charlie")
     |> mark_nodes(rows)
-    |> click(css("#reverse"))
-    |> assert_text(css("#result"), ~r/^charlie, bravo, alpha$/)
+    |> click("#reverse")
+    |> assert_text("#result", ~r/^charlie, bravo, alpha$/)
     |> assert_script_result(row_ids_script("#{kind}_rows"), Enum.reverse(rows))
     |> assert_input_value("##{kind}_input_alpha", "typed alpha")
     |> assert_input_value("##{kind}_input_charlie", "typed charlie")
     |> assert_script_result(kept_nodes_script(rows), rows)
-    |> click(css("#remove_first"))
-    |> assert_text(css("#result"), ~r/^bravo, alpha$/)
+    |> click("#remove_first")
+    |> assert_text("#result", ~r/^bravo, alpha$/)
     |> assert_script_result(row_ids_script("#{kind}_rows"), [
       "#{kind}_row_bravo",
       "#{kind}_row_alpha"
@@ -72,12 +61,12 @@ defmodule HologramFeatureTests.PatchingTest do
 
   # Clicked from a script rather than by the driver, so the button never takes focus itself: any
   # focus change that follows is then the page's doing, which is the thing under test.
-  defp click_by_script(session, id) do
-    execute_script(session, ~s|document.getElementById("#{id}").click();|)
+  defp click_by_script(page, id) do
+    execute_script(page, ~s|document.getElementById("#{id}").click();|)
   end
 
-  defp focus_by_script(session, id) do
-    execute_script(session, ~s|document.getElementById("#{id}").focus();|)
+  defp focus_by_script(page, id) do
+    execute_script(page, ~s|document.getElementById("#{id}").focus();|)
   end
 
   # The given elements whose node is still the one mark_nodes/2 tagged.
@@ -89,8 +78,8 @@ defmodule HologramFeatureTests.PatchingTest do
 
   # Each element's node is tagged with a property the diff never reads, so it lives exactly as long
   # as the DOM node does.
-  defp mark_nodes(session, ids) do
-    execute_script(session, """
+  defp mark_nodes(page, ids) do
+    execute_script(page, """
     #{inspect(ids)}.forEach((id) => {
       document.getElementById(id).__probe = id;
     });
@@ -110,184 +99,184 @@ defmodule HologramFeatureTests.PatchingTest do
   end
 
   describe "root element attributes patching" do
-    feature "after action", %{session: session} do
-      session
+    test "after action", %{page: page} do
+      page
       |> visit(Page1)
-      |> refute_has(css("html[attr_1]"))
-      |> refute_has(css("html[attr_2]"))
-      |> click(button("Add root elem attr 2"))
-      |> refute_has(css("html[attr_1]"))
-      |> assert_has(css("html[attr_2='value_2a']"))
-      |> click(button("Add root elem attr 1"))
-      |> assert_has(css("html[attr_1='value_1a']"))
-      |> assert_has(css("html[attr_2='value_2a']"))
-      |> click(button("Change root elem attr 2"))
-      |> assert_has(css("html[attr_1='value_1a']"))
-      |> assert_has(css("html[attr_2='value_2b']"))
-      |> click(button("Change root elem attr 1"))
-      |> assert_has(css("html[attr_1='value_1b']"))
-      |> assert_has(css("html[attr_2='value_2b']"))
-      |> click(button("Remove root elem attr 2"))
-      |> assert_has(css("html[attr_1='value_1b']"))
-      |> refute_has(css("html[attr_2]"))
-      |> click(button("Remove root elem attr 1"))
-      |> refute_has(css("html[attr_1]"))
-      |> refute_has(css("html[attr_2]"))
+      |> refute_has("html[attr_1]")
+      |> refute_has("html[attr_2]")
+      |> click_button("Add root elem attr 2")
+      |> refute_has("html[attr_1]")
+      |> assert_has("html[attr_2='value_2a']")
+      |> click_button("Add root elem attr 1")
+      |> assert_has("html[attr_1='value_1a']")
+      |> assert_has("html[attr_2='value_2a']")
+      |> click_button("Change root elem attr 2")
+      |> assert_has("html[attr_1='value_1a']")
+      |> assert_has("html[attr_2='value_2b']")
+      |> click_button("Change root elem attr 1")
+      |> assert_has("html[attr_1='value_1b']")
+      |> assert_has("html[attr_2='value_2b']")
+      |> click_button("Remove root elem attr 2")
+      |> assert_has("html[attr_1='value_1b']")
+      |> refute_has("html[attr_2]")
+      |> click_button("Remove root elem attr 1")
+      |> refute_has("html[attr_1]")
+      |> refute_has("html[attr_2]")
     end
 
-    feature "after navigation", %{session: session} do
-      session
+    test "after navigation", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Add root elem attr 1"))
-      |> click(button("Add root elem attr 2"))
-      |> assert_has(css("html[attr_1='value_1a']"))
-      |> assert_has(css("html[attr_2='value_2a']"))
-      |> click(link("Page 2 link"))
+      |> click_button("Add root elem attr 1")
+      |> click_button("Add root elem attr 2")
+      |> assert_has("html[attr_1='value_1a']")
+      |> assert_has("html[attr_2='value_2a']")
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
-      |> refute_has(css("html[attr_1]"))
-      |> refute_has(css("html[attr_2]"))
-      |> assert_has(css("html[attr_3='value_3']"))
+      |> refute_has("html[attr_1]")
+      |> refute_has("html[attr_2]")
+      |> assert_has("html[attr_3='value_3']")
     end
   end
 
   describe "body element attributes patching" do
-    feature "after action", %{session: session} do
-      session
+    test "after action", %{page: page} do
+      page
       |> visit(Page6)
-      |> refute_has(css("body[attr_1]"))
-      |> refute_has(css("body[attr_2]"))
-      |> click(button("Add body elem attr 2"))
-      |> refute_has(css("body[attr_1]"))
-      |> assert_has(css("body[attr_2='value_2a']"))
-      |> click(button("Add body elem attr 1"))
-      |> assert_has(css("body[attr_1='value_1a']"))
-      |> assert_has(css("body[attr_2='value_2a']"))
-      |> click(button("Change body elem attr 2"))
-      |> assert_has(css("body[attr_1='value_1a']"))
-      |> assert_has(css("body[attr_2='value_2b']"))
-      |> click(button("Change body elem attr 1"))
-      |> assert_has(css("body[attr_1='value_1b']"))
-      |> assert_has(css("body[attr_2='value_2b']"))
-      |> click(button("Remove body elem attr 2"))
-      |> assert_has(css("body[attr_1='value_1b']"))
-      |> refute_has(css("body[attr_2]"))
-      |> click(button("Remove body elem attr 1"))
-      |> refute_has(css("body[attr_1]"))
-      |> refute_has(css("body[attr_2]"))
+      |> refute_has("body[attr_1]")
+      |> refute_has("body[attr_2]")
+      |> click_button("Add body elem attr 2")
+      |> refute_has("body[attr_1]")
+      |> assert_has("body[attr_2='value_2a']")
+      |> click_button("Add body elem attr 1")
+      |> assert_has("body[attr_1='value_1a']")
+      |> assert_has("body[attr_2='value_2a']")
+      |> click_button("Change body elem attr 2")
+      |> assert_has("body[attr_1='value_1a']")
+      |> assert_has("body[attr_2='value_2b']")
+      |> click_button("Change body elem attr 1")
+      |> assert_has("body[attr_1='value_1b']")
+      |> assert_has("body[attr_2='value_2b']")
+      |> click_button("Remove body elem attr 2")
+      |> assert_has("body[attr_1='value_1b']")
+      |> refute_has("body[attr_2]")
+      |> click_button("Remove body elem attr 1")
+      |> refute_has("body[attr_1]")
+      |> refute_has("body[attr_2]")
     end
 
-    feature "after navigation", %{session: session} do
-      session
+    test "after navigation", %{page: page} do
+      page
       |> visit(Page6)
-      |> click(button("Add body elem attr 1"))
-      |> click(button("Add body elem attr 2"))
-      |> assert_has(css("body[attr_1='value_1a']"))
-      |> assert_has(css("body[attr_2='value_2a']"))
-      |> click(link("Page 7 link"))
+      |> click_button("Add body elem attr 1")
+      |> click_button("Add body elem attr 2")
+      |> assert_has("body[attr_1='value_1a']")
+      |> assert_has("body[attr_2='value_2a']")
+      |> click_link("Page 7 link")
       |> assert_page(Page7)
-      |> refute_has(css("body[attr_1]"))
-      |> refute_has(css("body[attr_2]"))
-      |> assert_has(css("body[attr_3='value_3']"))
+      |> refute_has("body[attr_1]")
+      |> refute_has("body[attr_2]")
+      |> assert_has("body[attr_3='value_3']")
     end
   end
 
   describe "class attribute in root element patching" do
-    feature "has class initially, changes to different class", %{session: session} do
-      session
+    test "has class initially, changes to different class", %{page: page} do
+      page
       |> visit(Page3)
-      |> click(button("Change to class 2"))
-      |> assert_has(css("html[class='my_class_2']"))
+      |> click_button("Change to class 2")
+      |> assert_has("html[class='my_class_2']")
     end
 
-    feature "has class initially, class is removed", %{session: session} do
-      session
+    test "has class initially, class is removed", %{page: page} do
+      page
       |> visit(Page3)
-      |> click(button("Remove class"))
-      |> refute_has(css("html[class]"))
+      |> click_button("Remove class")
+      |> refute_has("html[class]")
     end
 
-    feature "no class initially, class is added", %{session: session} do
-      session
+    test "no class initially, class is added", %{page: page} do
+      page
       |> visit(Page4)
-      |> click(button("Add class"))
-      |> assert_has(css("html[class='my_class']"))
+      |> click_button("Add class")
+      |> assert_has("html[class='my_class']")
     end
 
-    feature "has class after update, changes to different class", %{session: session} do
-      session
+    test "has class after update, changes to different class", %{page: page} do
+      page
       |> visit(Page3)
-      |> click(button("Change to class 2"))
-      |> assert_has(css("html[class='my_class_2']"))
-      |> click(button("Change to class 3"))
-      |> assert_has(css("html[class='my_class_3']"))
+      |> click_button("Change to class 2")
+      |> assert_has("html[class='my_class_2']")
+      |> click_button("Change to class 3")
+      |> assert_has("html[class='my_class_3']")
     end
 
-    feature "has class after update, class is removed", %{session: session} do
-      session
+    test "has class after update, class is removed", %{page: page} do
+      page
       |> visit(Page3)
-      |> click(button("Change to class 2"))
-      |> assert_has(css("html[class='my_class_2']"))
-      |> click(button("Remove class"))
-      |> refute_has(css("html[class]"))
+      |> click_button("Change to class 2")
+      |> assert_has("html[class='my_class_2']")
+      |> click_button("Remove class")
+      |> refute_has("html[class]")
     end
 
-    feature "no class after update, class is added", %{session: session} do
-      session
+    test "no class after update, class is added", %{page: page} do
+      page
       |> visit(Page3)
-      |> click(button("Remove class"))
-      |> refute_has(css("html[class]"))
-      |> click(button("Change to class 2"))
-      |> assert_has(css("html[class='my_class_2']"))
+      |> click_button("Remove class")
+      |> refute_has("html[class]")
+      |> click_button("Change to class 2")
+      |> assert_has("html[class='my_class_2']")
     end
   end
 
   describe "class attribute in body element patching" do
-    feature "has class initially, changes to different class", %{session: session} do
-      session
+    test "has class initially, changes to different class", %{page: page} do
+      page
       |> visit(Page8)
-      |> click(button("Change to class 2"))
-      |> assert_has(css("body[class='my_class_2']"))
+      |> click_button("Change to class 2")
+      |> assert_has("body[class='my_class_2']")
     end
 
-    feature "has class initially, class is removed", %{session: session} do
-      session
+    test "has class initially, class is removed", %{page: page} do
+      page
       |> visit(Page8)
-      |> click(button("Remove class"))
-      |> refute_has(css("body[class]"))
+      |> click_button("Remove class")
+      |> refute_has("body[class]")
     end
 
-    feature "no class initially, class is added", %{session: session} do
-      session
+    test "no class initially, class is added", %{page: page} do
+      page
       |> visit(Page9)
-      |> click(button("Add class"))
-      |> assert_has(css("body[class='my_class']"))
+      |> click_button("Add class")
+      |> assert_has("body[class='my_class']")
     end
 
-    feature "has class after update, changes to different class", %{session: session} do
-      session
+    test "has class after update, changes to different class", %{page: page} do
+      page
       |> visit(Page8)
-      |> click(button("Change to class 2"))
-      |> assert_has(css("body[class='my_class_2']"))
-      |> click(button("Change to class 3"))
-      |> assert_has(css("body[class='my_class_3']"))
+      |> click_button("Change to class 2")
+      |> assert_has("body[class='my_class_2']")
+      |> click_button("Change to class 3")
+      |> assert_has("body[class='my_class_3']")
     end
 
-    feature "has class after update, class is removed", %{session: session} do
-      session
+    test "has class after update, class is removed", %{page: page} do
+      page
       |> visit(Page8)
-      |> click(button("Change to class 2"))
-      |> assert_has(css("body[class='my_class_2']"))
-      |> click(button("Remove class"))
-      |> refute_has(css("body[class]"))
+      |> click_button("Change to class 2")
+      |> assert_has("body[class='my_class_2']")
+      |> click_button("Remove class")
+      |> refute_has("body[class]")
     end
 
-    feature "no class after update, class is added", %{session: session} do
-      session
+    test "no class after update, class is added", %{page: page} do
+      page
       |> visit(Page8)
-      |> click(button("Remove class"))
-      |> refute_has(css("body[class]"))
-      |> click(button("Change to class 2"))
-      |> assert_has(css("body[class='my_class_2']"))
+      |> click_button("Remove class")
+      |> refute_has("body[class]")
+      |> click_button("Change to class 2")
+      |> assert_has("body[class='my_class_2']")
     end
   end
 
@@ -302,404 +291,404 @@ defmodule HologramFeatureTests.PatchingTest do
     # 7) change manually to an empty value when the last programmatic value was also empty
     # 8) change manually to an empty value when the last programmatic value was not empty
 
-    feature "text input value patching (without state synchronization)", %{session: session} do
-      session
+    test "text input value patching (without state synchronization)", %{page: page} do
+      page
       |> visit(Page5)
       |> assert_input_value("#text_input", "initial text")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Update Text 1"))
+      |> click_button("Update Text 1")
       |> assert_input_value("#text_input", "programmatic 1")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> fill_in(css("#text_input"), with: "manual 1")
+      |> fill_in("#text_input", with: "manual 1")
       |> assert_input_value("#text_input", "manual 1")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog
-      |> click(button("Update Text 1"))
+      |> click_button("Update Text 1")
       |> assert_input_value("#text_input", "programmatic 1")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Update Text 2"))
+      |> click_button("Update Text 2")
       |> assert_input_value("#text_input", "programmatic 2")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Setup B: switch to a different manual value
-      |> fill_in(css("#text_input"), with: "manual 2")
+      |> fill_in("#text_input", with: "manual 2")
       |> assert_input_value("#text_input", "manual 2")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> fill_in(css("#text_input"), with: "programmatic 2")
+      |> fill_in("#text_input", with: "programmatic 2")
       |> assert_input_value("#text_input", "programmatic 2")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#text_input", "")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Setup C: switch to a different manual value
-      |> fill_in(css("#text_input"), with: "manual 3")
+      |> fill_in("#text_input", with: "manual 3")
       |> assert_input_value("#text_input", "manual 3")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 6 (Cond 7): manual empty, last prog was also empty
-      |> fill_in(css("#text_input"), with: "")
+      |> fill_in("#text_input", with: "")
       |> assert_input_value("#text_input", "")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Setup D: switch to a different manual value
-      |> fill_in(css("#text_input"), with: "manual 4")
+      |> fill_in("#text_input", with: "manual 4")
       |> assert_input_value("#text_input", "manual 4")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 7 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#text_input", "")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Setup E: set non-empty programmatic value
-      |> click(button("Update Text 1"))
+      |> click_button("Update Text 1")
       |> assert_input_value("#text_input", "programmatic 1")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
       # --- Group 8 (Cond 8): manual empty, last prog was not empty
-      |> fill_in(css("#text_input"), with: "")
+      |> fill_in("#text_input", with: "")
       |> assert_input_value("#text_input", "")
-      |> refute_has(css("#text_input[value]"))
+      |> refute_has("#text_input[value]")
     end
 
-    feature "text input value patching (with state synchronization)", %{session: session} do
-      session
+    test "text input value patching (with state synchronization)", %{page: page} do
+      page
       |> visit(Page10)
       |> assert_input_value("#text_input", "initial text")
-      |> assert_text(css("#text_result"), "initial text")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "initial text")
+      |> refute_has("#text_input[value]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Update Text 1"))
+      |> click_button("Update Text 1")
       |> assert_input_value("#text_input", "programmatic 1")
-      |> assert_text(css("#text_result"), "programmatic 1")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "programmatic 1")
+      |> refute_has("#text_input[value]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> fill_in(css("#text_input"), with: "manual 1")
+      |> fill_in("#text_input", with: "manual 1")
       |> assert_input_value("#text_input", "manual 1")
-      |> assert_text(css("#text_result"), "manual 1")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "manual 1")
+      |> refute_has("#text_input[value]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog
-      |> click(button("Update Text 1"))
+      |> click_button("Update Text 1")
       |> assert_input_value("#text_input", "programmatic 1")
-      |> assert_text(css("#text_result"), "programmatic 1")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "programmatic 1")
+      |> refute_has("#text_input[value]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Update Text 2"))
+      |> click_button("Update Text 2")
       |> assert_input_value("#text_input", "programmatic 2")
-      |> assert_text(css("#text_result"), "programmatic 2")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "programmatic 2")
+      |> refute_has("#text_input[value]")
       # --- Setup B: switch to a different manual value
-      |> fill_in(css("#text_input"), with: "manual 2")
+      |> fill_in("#text_input", with: "manual 2")
       |> assert_input_value("#text_input", "manual 2")
-      |> assert_text(css("#text_result"), "manual 2")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "manual 2")
+      |> refute_has("#text_input[value]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> fill_in(css("#text_input"), with: "programmatic 2")
+      |> fill_in("#text_input", with: "programmatic 2")
       |> assert_input_value("#text_input", "programmatic 2")
-      |> assert_text(css("#text_result"), "programmatic 2")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "programmatic 2")
+      |> refute_has("#text_input[value]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#text_input", "")
-      |> assert_text(css("#text_result"), "")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "")
+      |> refute_has("#text_input[value]")
       # --- Setup C: switch to a different manual value
-      |> fill_in(css("#text_input"), with: "manual 3")
+      |> fill_in("#text_input", with: "manual 3")
       |> assert_input_value("#text_input", "manual 3")
-      |> assert_text(css("#text_result"), "manual 3")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "manual 3")
+      |> refute_has("#text_input[value]")
       # --- Group 6 (Cond 7): manual empty, last prog was also empty
-      |> fill_in(css("#text_input"), with: "")
+      |> fill_in("#text_input", with: "")
       |> assert_input_value("#text_input", "")
-      |> assert_text(css("#text_result"), "")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "")
+      |> refute_has("#text_input[value]")
       # --- Setup D: switch to a different manual value
-      |> fill_in(css("#text_input"), with: "manual 4")
+      |> fill_in("#text_input", with: "manual 4")
       |> assert_input_value("#text_input", "manual 4")
-      |> assert_text(css("#text_result"), "manual 4")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "manual 4")
+      |> refute_has("#text_input[value]")
       # --- Group 7 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#text_input", "")
-      |> assert_text(css("#text_result"), "")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "")
+      |> refute_has("#text_input[value]")
       # --- Setup E: set non-empty programmatic value
-      |> click(button("Update Text 1"))
+      |> click_button("Update Text 1")
       |> assert_input_value("#text_input", "programmatic 1")
-      |> assert_text(css("#text_result"), "programmatic 1")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "programmatic 1")
+      |> refute_has("#text_input[value]")
       # --- Group 8 (Cond 8): manual empty, last prog was not empty
-      |> fill_in(css("#text_input"), with: "")
+      |> fill_in("#text_input", with: "")
       |> assert_input_value("#text_input", "")
-      |> assert_text(css("#text_result"), "")
-      |> refute_has(css("#text_input[value]"))
+      |> assert_text("#text_result", "")
+      |> refute_has("#text_input[value]")
     end
 
-    feature "email input value patching (without state synchronization)", %{session: session} do
-      session
+    test "email input value patching (without state synchronization)", %{page: page} do
+      page
       |> visit(Page5)
       |> assert_input_value("#email_input", "initial email")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Update Email 1"))
+      |> click_button("Update Email 1")
       |> assert_input_value("#email_input", "programmatic 1")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> fill_in(css("#email_input"), with: "manual 1")
+      |> fill_in("#email_input", with: "manual 1")
       |> assert_input_value("#email_input", "manual 1")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog
-      |> click(button("Update Email 1"))
+      |> click_button("Update Email 1")
       |> assert_input_value("#email_input", "programmatic 1")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Update Email 2"))
+      |> click_button("Update Email 2")
       |> assert_input_value("#email_input", "programmatic 2")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Setup B: switch to a different manual value
-      |> fill_in(css("#email_input"), with: "manual 2")
+      |> fill_in("#email_input", with: "manual 2")
       |> assert_input_value("#email_input", "manual 2")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> fill_in(css("#email_input"), with: "programmatic 2")
+      |> fill_in("#email_input", with: "programmatic 2")
       |> assert_input_value("#email_input", "programmatic 2")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#email_input", "")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Setup C: switch to a different manual value
-      |> fill_in(css("#email_input"), with: "manual 3")
+      |> fill_in("#email_input", with: "manual 3")
       |> assert_input_value("#email_input", "manual 3")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 6 (Cond 7): manual empty, last prog was also empty
-      |> fill_in(css("#email_input"), with: "")
+      |> fill_in("#email_input", with: "")
       |> assert_input_value("#email_input", "")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Setup D: switch to a different manual value
-      |> fill_in(css("#email_input"), with: "manual 4")
+      |> fill_in("#email_input", with: "manual 4")
       |> assert_input_value("#email_input", "manual 4")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 7 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#email_input", "")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Setup E: set non-empty programmatic value
-      |> click(button("Update Email 1"))
+      |> click_button("Update Email 1")
       |> assert_input_value("#email_input", "programmatic 1")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
       # --- Group 8 (Cond 8): manual empty, last prog was not empty
-      |> fill_in(css("#email_input"), with: "")
+      |> fill_in("#email_input", with: "")
       |> assert_input_value("#email_input", "")
-      |> refute_has(css("#email_input[value]"))
+      |> refute_has("#email_input[value]")
     end
 
-    feature "email input value patching (with state synchronization)", %{session: session} do
-      session
+    test "email input value patching (with state synchronization)", %{page: page} do
+      page
       |> visit(Page10)
       |> assert_input_value("#email_input", "initial email")
-      |> assert_text(css("#email_result"), "initial email")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "initial email")
+      |> refute_has("#email_input[value]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Update Email 1"))
+      |> click_button("Update Email 1")
       |> assert_input_value("#email_input", "programmatic 1")
-      |> assert_text(css("#email_result"), "programmatic 1")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "programmatic 1")
+      |> refute_has("#email_input[value]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> fill_in(css("#email_input"), with: "manual 1")
+      |> fill_in("#email_input", with: "manual 1")
       |> assert_input_value("#email_input", "manual 1")
-      |> assert_text(css("#email_result"), "manual 1")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "manual 1")
+      |> refute_has("#email_input[value]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog
-      |> click(button("Update Email 1"))
+      |> click_button("Update Email 1")
       |> assert_input_value("#email_input", "programmatic 1")
-      |> assert_text(css("#email_result"), "programmatic 1")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "programmatic 1")
+      |> refute_has("#email_input[value]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Update Email 2"))
+      |> click_button("Update Email 2")
       |> assert_input_value("#email_input", "programmatic 2")
-      |> assert_text(css("#email_result"), "programmatic 2")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "programmatic 2")
+      |> refute_has("#email_input[value]")
       # --- Setup B: switch to a different manual value
-      |> fill_in(css("#email_input"), with: "manual 2")
+      |> fill_in("#email_input", with: "manual 2")
       |> assert_input_value("#email_input", "manual 2")
-      |> assert_text(css("#email_result"), "manual 2")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "manual 2")
+      |> refute_has("#email_input[value]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> fill_in(css("#email_input"), with: "programmatic 2")
+      |> fill_in("#email_input", with: "programmatic 2")
       |> assert_input_value("#email_input", "programmatic 2")
-      |> assert_text(css("#email_result"), "programmatic 2")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "programmatic 2")
+      |> refute_has("#email_input[value]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#email_input", "")
-      |> assert_text(css("#email_result"), "")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "")
+      |> refute_has("#email_input[value]")
       # --- Setup C: switch to a different manual value
-      |> fill_in(css("#email_input"), with: "manual 3")
+      |> fill_in("#email_input", with: "manual 3")
       |> assert_input_value("#email_input", "manual 3")
-      |> assert_text(css("#email_result"), "manual 3")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "manual 3")
+      |> refute_has("#email_input[value]")
       # --- Group 6 (Cond 7): manual empty, last prog was also empty
-      |> fill_in(css("#email_input"), with: "")
+      |> fill_in("#email_input", with: "")
       |> assert_input_value("#email_input", "")
-      |> assert_text(css("#email_result"), "")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "")
+      |> refute_has("#email_input[value]")
       # --- Setup D: switch to a different manual value
-      |> fill_in(css("#email_input"), with: "manual 4")
+      |> fill_in("#email_input", with: "manual 4")
       |> assert_input_value("#email_input", "manual 4")
-      |> assert_text(css("#email_result"), "manual 4")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "manual 4")
+      |> refute_has("#email_input[value]")
       # --- Group 7 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#email_input", "")
-      |> assert_text(css("#email_result"), "")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "")
+      |> refute_has("#email_input[value]")
       # --- Setup E: set non-empty programmatic value
-      |> click(button("Update Email 1"))
+      |> click_button("Update Email 1")
       |> assert_input_value("#email_input", "programmatic 1")
-      |> assert_text(css("#email_result"), "programmatic 1")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "programmatic 1")
+      |> refute_has("#email_input[value]")
       # --- Group 8 (Cond 8): manual empty, last prog was not empty
-      |> fill_in(css("#email_input"), with: "")
+      |> fill_in("#email_input", with: "")
       |> assert_input_value("#email_input", "")
-      |> assert_text(css("#email_result"), "")
-      |> refute_has(css("#email_input[value]"))
+      |> assert_text("#email_result", "")
+      |> refute_has("#email_input[value]")
     end
 
-    feature "textarea value patching (without state synchronization)", %{session: session} do
-      session
+    test "textarea value patching (without state synchronization)", %{page: page} do
+      page
       |> visit(Page5)
       |> assert_input_value("#textarea", "initial textarea")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Update Textarea 1"))
+      |> click_button("Update Textarea 1")
       |> assert_input_value("#textarea", "programmatic 1")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> fill_in(css("#textarea"), with: "manual 1")
+      |> fill_in("#textarea", with: "manual 1")
       |> assert_input_value("#textarea", "manual 1")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog
-      |> click(button("Update Textarea 1"))
+      |> click_button("Update Textarea 1")
       |> assert_input_value("#textarea", "programmatic 1")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Update Textarea 2"))
+      |> click_button("Update Textarea 2")
       |> assert_input_value("#textarea", "programmatic 2")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Setup B: switch to a different manual value
-      |> fill_in(css("#textarea"), with: "manual 2")
+      |> fill_in("#textarea", with: "manual 2")
       |> assert_input_value("#textarea", "manual 2")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> fill_in(css("#textarea"), with: "programmatic 2")
+      |> fill_in("#textarea", with: "programmatic 2")
       |> assert_input_value("#textarea", "programmatic 2")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#textarea", "")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Setup C: switch to a different manual value
-      |> fill_in(css("#textarea"), with: "manual 3")
+      |> fill_in("#textarea", with: "manual 3")
       |> assert_input_value("#textarea", "manual 3")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 6 (Cond 7): manual empty, last prog was also empty
-      |> fill_in(css("#textarea"), with: "")
+      |> fill_in("#textarea", with: "")
       |> assert_input_value("#textarea", "")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Setup D: switch to a different manual value
-      |> fill_in(css("#textarea"), with: "manual 4")
+      |> fill_in("#textarea", with: "manual 4")
       |> assert_input_value("#textarea", "manual 4")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 7 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#textarea", "")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Setup E: set non-empty programmatic value
-      |> click(button("Update Textarea 1"))
+      |> click_button("Update Textarea 1")
       |> assert_input_value("#textarea", "programmatic 1")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
       # --- Group 8 (Cond 8): manual empty, last prog was not empty
-      |> fill_in(css("#textarea"), with: "")
+      |> fill_in("#textarea", with: "")
       |> assert_input_value("#textarea", "")
-      |> refute_has(css("#textarea[value]"))
+      |> refute_has("#textarea[value]")
     end
 
-    feature "textarea value patching (with state synchronization)", %{session: session} do
-      session
+    test "textarea value patching (with state synchronization)", %{page: page} do
+      page
       |> visit(Page10)
       |> assert_input_value("#textarea", "initial textarea")
-      |> assert_text(css("#textarea_result"), "initial textarea")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "initial textarea")
+      |> refute_has("#textarea[value]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Update Textarea 1"))
+      |> click_button("Update Textarea 1")
       |> assert_input_value("#textarea", "programmatic 1")
-      |> assert_text(css("#textarea_result"), "programmatic 1")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "programmatic 1")
+      |> refute_has("#textarea[value]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> fill_in(css("#textarea"), with: "manual 1")
+      |> fill_in("#textarea", with: "manual 1")
       |> assert_input_value("#textarea", "manual 1")
-      |> assert_text(css("#textarea_result"), "manual 1")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "manual 1")
+      |> refute_has("#textarea[value]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog
-      |> click(button("Update Textarea 1"))
+      |> click_button("Update Textarea 1")
       |> assert_input_value("#textarea", "programmatic 1")
-      |> assert_text(css("#textarea_result"), "programmatic 1")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "programmatic 1")
+      |> refute_has("#textarea[value]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Update Textarea 2"))
+      |> click_button("Update Textarea 2")
       |> assert_input_value("#textarea", "programmatic 2")
-      |> assert_text(css("#textarea_result"), "programmatic 2")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "programmatic 2")
+      |> refute_has("#textarea[value]")
       # --- Setup B: switch to a different manual value
-      |> fill_in(css("#textarea"), with: "manual 2")
+      |> fill_in("#textarea", with: "manual 2")
       |> assert_input_value("#textarea", "manual 2")
-      |> assert_text(css("#textarea_result"), "manual 2")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "manual 2")
+      |> refute_has("#textarea[value]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> fill_in(css("#textarea"), with: "programmatic 2")
+      |> fill_in("#textarea", with: "programmatic 2")
       |> assert_input_value("#textarea", "programmatic 2")
-      |> assert_text(css("#textarea_result"), "programmatic 2")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "programmatic 2")
+      |> refute_has("#textarea[value]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#textarea", "")
-      |> assert_text(css("#textarea_result"), "")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "")
+      |> refute_has("#textarea[value]")
       # --- Setup C: switch to a different manual value
-      |> fill_in(css("#textarea"), with: "manual 3")
+      |> fill_in("#textarea", with: "manual 3")
       |> assert_input_value("#textarea", "manual 3")
-      |> assert_text(css("#textarea_result"), "manual 3")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "manual 3")
+      |> refute_has("#textarea[value]")
       # --- Group 6 (Cond 7): manual empty, last prog was also empty
-      |> fill_in(css("#textarea"), with: "")
+      |> fill_in("#textarea", with: "")
       |> assert_input_value("#textarea", "")
-      |> assert_text(css("#textarea_result"), "")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "")
+      |> refute_has("#textarea[value]")
       # --- Setup D: switch to a different manual value
-      |> fill_in(css("#textarea"), with: "manual 4")
+      |> fill_in("#textarea", with: "manual 4")
       |> assert_input_value("#textarea", "manual 4")
-      |> assert_text(css("#textarea_result"), "manual 4")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "manual 4")
+      |> refute_has("#textarea[value]")
       # --- Group 7 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear All State"))
+      |> click_button("Clear All State")
       |> assert_input_value("#textarea", "")
-      |> assert_text(css("#textarea_result"), "")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "")
+      |> refute_has("#textarea[value]")
       # --- Setup E: set non-empty programmatic value
-      |> click(button("Update Textarea 1"))
+      |> click_button("Update Textarea 1")
       |> assert_input_value("#textarea", "programmatic 1")
-      |> assert_text(css("#textarea_result"), "programmatic 1")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "programmatic 1")
+      |> refute_has("#textarea[value]")
       # --- Group 8 (Cond 8): manual empty, last prog was not empty
-      |> fill_in(css("#textarea"), with: "")
+      |> fill_in("#textarea", with: "")
       |> assert_input_value("#textarea", "")
-      |> assert_text(css("#textarea_result"), "")
-      |> refute_has(css("#textarea[value]"))
+      |> assert_text("#textarea_result", "")
+      |> refute_has("#textarea[value]")
     end
 
     @tag timeout: 70_000
-    feature "checkbox checked patching", %{session: session} do
+    test "checkbox checked patching", %{page: page} do
       # We're testing different combinations of specific user operations for checkboxes:
       # 1) change programmatically to checked when the last programmatic value was also checked
       # 2) change programmatically to checked when the last programmatic value was unchecked
@@ -711,68 +700,68 @@ defmodule HologramFeatureTests.PatchingTest do
       # 8) change manually to unchecked when the last programmatic value was checked
 
       # credo:disable-for-lines:58 Credo.Check.Design.DuplicatedCode
-      session
+      page
       |> visit(Page5)
-      |> assert_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> assert_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Setup A: establish baseline programmatic state (unchecked)
-      |> click(button("Uncheck Checkbox"))
-      |> refute_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Uncheck Checkbox")
+      |> refute_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 1 (Cond 6): manual checked, different from last prog (unchecked)
-      |> click(css("#checkbox"))
-      |> assert_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click("#checkbox")
+      |> assert_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 2 (Cond 3): prog unchecked, same as last prog (unchecked)
-      |> click(button("Uncheck Checkbox"))
-      |> refute_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Uncheck Checkbox")
+      |> refute_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 3 (Cond 2): prog checked, different from last prog (unchecked)
-      |> click(button("Check Checkbox"))
-      |> assert_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Check Checkbox")
+      |> assert_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Setup B: manual change to different state (unchecked)
-      |> click(css("#checkbox"))
-      |> refute_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click("#checkbox")
+      |> refute_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 4 (Cond 5): manual checked, same as last prog (checked)
-      |> click(css("#checkbox"))
-      |> assert_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click("#checkbox")
+      |> assert_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 5 (Cond 1): prog checked, same as last prog (checked)
-      |> click(button("Check Checkbox"))
-      |> assert_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Check Checkbox")
+      |> assert_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Setup C: switch to unchecked programmatically
-      |> click(button("Uncheck Checkbox"))
-      |> refute_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Uncheck Checkbox")
+      |> refute_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 6 (Cond 7): manual unchecked, same as last prog (unchecked)
-      |> click(css("#checkbox"))
-      |> assert_has(css("#checkbox:checked"))
-      |> click(css("#checkbox"))
-      |> refute_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click("#checkbox")
+      |> assert_has("#checkbox:checked")
+      |> click("#checkbox")
+      |> refute_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Setup D: set programmatic state to checked for next test
-      |> click(button("Check Checkbox"))
-      |> assert_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Check Checkbox")
+      |> assert_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 7 (Cond 4): prog unchecked, different from last prog (checked)
-      |> click(button("Uncheck Checkbox"))
-      |> refute_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Uncheck Checkbox")
+      |> refute_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Setup E: set programmatic state to checked for condition 8
-      |> click(button("Check Checkbox"))
-      |> assert_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click_button("Check Checkbox")
+      |> assert_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
       # --- Group 8 (Cond 8): manual unchecked, different from last prog (checked)
-      |> click(css("#checkbox"))
-      |> refute_has(css("#checkbox:checked"))
-      |> refute_has(css("#checkbox[checked]"))
+      |> click("#checkbox")
+      |> refute_has("#checkbox:checked")
+      |> refute_has("#checkbox[checked]")
     end
 
     @tag timeout: 100_000
-    feature "radio checked patching", %{session: session} do
+    test "radio checked patching", %{page: page} do
       # We're testing different combinations of specific user operations for radio buttons:
       # 1) change programmatically to a non-empty value that is the same as the last programmatic value
       # 2) change programmatically to a non-empty value that is different than the last programmatic value
@@ -782,70 +771,70 @@ defmodule HologramFeatureTests.PatchingTest do
       # 6) change manually to a non-empty value that is different than the last programmatic value
 
       # credo:disable-for-lines:60 Credo.Check.Design.DuplicatedCode
-      session
+      page
       |> visit(Page5)
-      |> refute_has(css("#radio_option_1:checked"))
-      |> assert_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> refute_has("#radio_option_1:checked")
+      |> assert_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Select Radio Option 1"))
-      |> assert_has(css("#radio_option_1:checked"))
-      |> refute_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click_button("Select Radio Option 1")
+      |> assert_has("#radio_option_1:checked")
+      |> refute_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> click(css("#radio_option_2"))
-      |> refute_has(css("#radio_option_1:checked"))
-      |> assert_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click("#radio_option_2")
+      |> refute_has("#radio_option_1:checked")
+      |> assert_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog (option_1)
-      |> click(button("Select Radio Option 1"))
-      |> assert_has(css("#radio_option_1:checked"))
-      |> refute_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click_button("Select Radio Option 1")
+      |> assert_has("#radio_option_1:checked")
+      |> refute_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Select Radio Option 2"))
-      |> refute_has(css("#radio_option_1:checked"))
-      |> assert_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click_button("Select Radio Option 2")
+      |> refute_has("#radio_option_1:checked")
+      |> assert_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Setup B: switch to a different manual value
-      |> click(css("#radio_option_1"))
-      |> assert_has(css("#radio_option_1:checked"))
-      |> refute_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click("#radio_option_1")
+      |> assert_has("#radio_option_1:checked")
+      |> refute_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> click(css("#radio_option_2"))
-      |> refute_has(css("#radio_option_1:checked"))
-      |> assert_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click("#radio_option_2")
+      |> refute_has("#radio_option_1:checked")
+      |> assert_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear Radio"))
-      |> refute_has(css("#radio_option_1:checked"))
-      |> refute_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click_button("Clear Radio")
+      |> refute_has("#radio_option_1:checked")
+      |> refute_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Setup C: switch to a different manual value
-      |> click(css("#radio_option_1"))
-      |> assert_has(css("#radio_option_1:checked"))
-      |> refute_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click("#radio_option_1")
+      |> assert_has("#radio_option_1:checked")
+      |> refute_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
       # --- Group 6 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear Radio"))
-      |> refute_has(css("#radio_option_1:checked"))
-      |> refute_has(css("#radio_option_2:checked"))
-      |> refute_has(css("#radio_option_1[checked]"))
-      |> refute_has(css("#radio_option_2[checked]"))
+      |> click_button("Clear Radio")
+      |> refute_has("#radio_option_1:checked")
+      |> refute_has("#radio_option_2:checked")
+      |> refute_has("#radio_option_1[checked]")
+      |> refute_has("#radio_option_2[checked]")
     end
 
     @tag timeout: 100_000
-    feature "select selected patching", %{session: session} do
+    test "select selected patching", %{page: page} do
       # We're testing different combinations of specific user operations for selects:
       # 1) change programmatically to a non-empty value that is the same as the last programmatic value
       # 2) change programmatically to a non-empty value that is different than the last programmatic value
@@ -855,61 +844,61 @@ defmodule HologramFeatureTests.PatchingTest do
       # 6) change manually to a non-empty value that is different than the last programmatic value
 
       # credo:disable-for-lines:60 Credo.Check.Design.DuplicatedCode
-      session
+      page
       |> visit(Page5)
       |> assert_input_value("#select", "option_2")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Setup A: establish baseline programmatic value
-      |> click(button("Select Select Option 1"))
+      |> click_button("Select Select Option 1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
-      |> click(css("#select_option_2"))
+      |> select_option("#select", "option_2")
       |> assert_input_value("#select", "option_2")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog (option_1)
-      |> click(button("Select Select Option 1"))
+      |> click_button("Select Select Option 1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
-      |> click(button("Select Select Option 2"))
+      |> click_button("Select Select Option 2")
       |> assert_input_value("#select", "option_2")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Setup B: switch to a different manual value
-      |> click(css("#select_option_1"))
+      |> select_option("#select", "option_1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
-      |> click(css("#select_option_2"))
+      |> select_option("#select", "option_2")
       |> assert_input_value("#select", "option_2")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
-      |> click(button("Clear Select"))
+      |> click_button("Clear Select")
       |> assert_input_value("#select", "")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Setup C: switch to a different manual value
-      |> click(css("#select_option_1"))
+      |> select_option("#select", "option_1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
       # --- Group 6 (Cond 3): prog empty, last prog was also empty
-      |> click(button("Clear Select"))
+      |> click_button("Clear Select")
       |> assert_input_value("#select", "")
-      |> refute_has(css("#select_option_1[selected]"))
-      |> refute_has(css("#select_option_2[selected]"))
+      |> refute_has("#select_option_1[selected]")
+      |> refute_has("#select_option_2[selected]")
     end
   end
 
   describe "sibling identity across block boundaries" do
-    feature "stateful siblings survive a conditional toggle", %{session: session} do
+    test "stateful siblings survive a conditional toggle", %{page: page} do
       inputs = ["input_a", "input_b", "input_c"]
 
       # Each input is tagged with a property the diff never reads, so it lives exactly as long as
@@ -938,29 +927,29 @@ defmodule HologramFeatureTests.PatchingTest do
       );
       """
 
-      session =
-        session
+      page =
+        page
         |> visit(Page11)
-        |> assert_text(css("#result"), "false")
-        |> fill_in(css("#input_a"), with: "typed a")
-        |> fill_in(css("#input_b"), with: "typed b")
-        |> fill_in(css("#input_c"), with: "typed c")
+        |> assert_text("#result", "false")
+        |> fill_in("#input_a", with: "typed a")
+        |> fill_in("#input_b", with: "typed b")
+        |> fill_in("#input_c", with: "typed c")
 
-      script_result(session, mark_nodes)
-      script_result(session, toggle)
+      script_result(page, mark_nodes)
+      script_result(page, toggle)
 
-      session
-      |> assert_text(css("#result"), "true")
+      page
+      |> assert_text("#result", "true")
       |> assert_count(".banner", 3)
       |> assert_input_value("#input_a", "typed a")
       |> assert_input_value("#input_b", "typed b")
       |> assert_input_value("#input_c", "typed c")
       |> assert_script_result(kept_nodes, inputs)
       |> assert_script_result(repurposed_keepers, [])
-      |> assert_script_result(~s|return document.activeElement.id;|, "input_a")
+      |> assert_focused("#input_a")
     end
 
-    feature "stateful siblings survive a branch switch", %{session: session} do
+    test "stateful siblings survive a branch switch", %{page: page} do
       inputs = ["input_a", "input_b"]
 
       mark_nodes = """
@@ -984,36 +973,36 @@ defmodule HologramFeatureTests.PatchingTest do
       );
       """
 
-      session =
-        session
+      page =
+        page
         |> visit(Page12)
-        |> assert_text(css("#result"), "true")
-        |> fill_in(css("#input_a"), with: "typed a")
-        |> fill_in(css("#input_b"), with: "typed b")
+        |> assert_text("#result", "true")
+        |> fill_in("#input_a", with: "typed a")
+        |> fill_in("#input_b", with: "typed b")
 
-      script_result(session, mark_nodes)
-      script_result(session, switch)
+      script_result(page, mark_nodes)
+      script_result(page, switch)
 
-      session
-      |> assert_text(css("#result"), "false")
+      page
+      |> assert_text("#result", "false")
       |> assert_input_value("#input_a", "typed a")
       |> assert_input_value("#input_b", "typed b")
       |> assert_script_result(kept_nodes, inputs)
       |> assert_script_result(repurposed_keepers, [])
-      |> assert_script_result(~s|return document.activeElement.id;|, "input_a")
+      |> assert_focused("#input_a")
 
-      script_result(session, switch)
+      script_result(page, switch)
 
-      session
-      |> assert_text(css("#result"), "true")
+      page
+      |> assert_text("#result", "true")
       |> assert_input_value("#input_a", "typed a")
       |> assert_input_value("#input_b", "typed b")
       |> assert_script_result(kept_nodes, inputs)
       |> assert_script_result(repurposed_keepers, [])
-      |> assert_script_result(~s|return document.activeElement.id;|, "input_a")
+      |> assert_focused("#input_a")
     end
 
-    feature "stateful siblings survive loop changes", %{session: session} do
+    test "stateful siblings survive loop changes", %{page: page} do
       inputs = ["input_a", "input_b"]
 
       mark_nodes = """
@@ -1026,48 +1015,48 @@ defmodule HologramFeatureTests.PatchingTest do
       return #{inspect(inputs)}.filter((id) => document.getElementById(id).__probe === id);
       """
 
-      session =
-        session
+      page =
+        page
         |> visit(Page13)
-        |> click(button("Add item"))
-        |> click(button("Add item"))
-        |> assert_text(css("#result"), "item 1, item 2, item 3")
-        |> fill_in(css("#input_a"), with: "typed a")
-        |> fill_in(css("#input_b"), with: "typed b")
+        |> click_button("Add item")
+        |> click_button("Add item")
+        |> assert_text("#result", "item 1, item 2, item 3")
+        |> fill_in("#input_a", with: "typed a")
+        |> fill_in("#input_b", with: "typed b")
 
-      script_result(session, mark_nodes)
+      script_result(page, mark_nodes)
 
       # Switching the conditional inside the loop body renders the same key once per item, so this
       # is the patch that throws when repeated keys reach the diff unnumbered. It takes three of
       # them: with two the diff realigns on its own and the failure does not surface.
-      session
-      |> click(button("Toggle badges"))
+      page
+      |> click_button("Toggle badges")
       |> assert_count(".badge", 0)
       |> assert_input_value("#input_a", "typed a")
       |> assert_input_value("#input_b", "typed b")
       |> assert_script_result(kept_nodes, inputs)
-      |> click(button("Toggle badges"))
+      |> click_button("Toggle badges")
       |> assert_count(".badge", 3)
       |> assert_input_value("#input_a", "typed a")
       |> assert_input_value("#input_b", "typed b")
       |> assert_script_result(kept_nodes, inputs)
 
-      session
-      |> click(button("Add item"))
-      |> assert_text(css("#result"), "item 1, item 2, item 3, item 4")
+      page
+      |> click_button("Add item")
+      |> assert_text("#result", "item 1, item 2, item 3, item 4")
       |> assert_input_value("#input_a", "typed a")
       |> assert_input_value("#input_b", "typed b")
       |> assert_script_result(kept_nodes, inputs)
-      |> click(button("Remove item"))
-      |> click(button("Remove item"))
-      |> assert_text(css("#result"), "item 1, item 2")
+      |> click_button("Remove item")
+      |> click_button("Remove item")
+      |> assert_text("#result", "item 1, item 2")
       |> assert_input_value("#input_a", "typed a")
       |> assert_input_value("#input_b", "typed b")
       |> assert_script_result(kept_nodes, inputs)
     end
 
-    feature "stateful siblings survive several conditionals switching at once", %{
-      session: session
+    test "stateful siblings survive several conditionals switching at once", %{
+      page: page
     } do
       fields = ["field_1", "field_2", "field_3"]
 
@@ -1085,53 +1074,53 @@ defmodule HologramFeatureTests.PatchingTest do
       return #{inspect(fields)}.map((id) => document.getElementById(id).value);
       """
 
-      session =
-        session
+      page =
+        page
         |> visit(Page14)
-        |> assert_text(css("#result"), "true")
+        |> assert_text("#result", "true")
         |> assert_count(".hint", 3)
-        |> fill_in(css("#field_1"), with: "typed 1")
-        |> fill_in(css("#field_2"), with: "typed 2")
-        |> fill_in(css("#field_3"), with: "typed 3")
+        |> fill_in("#field_1", with: "typed 1")
+        |> fill_in("#field_2", with: "typed 2")
+        |> fill_in("#field_3", with: "typed 3")
 
-      script_result(session, mark_nodes)
+      script_result(page, mark_nodes)
 
       # Hiding is the direction that fails: three regions shrink in one patch, and the fields
       # between them are keyless. Values are read as a list so a value landing in a neighbouring
       # field is caught, not just a value going missing.
-      session
-      |> click(button("Toggle hints"))
-      |> assert_text(css("#result"), "false")
+      page
+      |> click_button("Toggle hints")
+      |> assert_text("#result", "false")
       |> assert_count(".hint", 0)
       |> assert_script_result(typed_values, ["typed 1", "typed 2", "typed 3"])
       |> assert_script_result(kept_nodes, fields)
-      |> click(button("Toggle hints"))
-      |> assert_text(css("#result"), "true")
+      |> click_button("Toggle hints")
+      |> assert_text("#result", "true")
       |> assert_count(".hint", 3)
       |> assert_script_result(typed_values, ["typed 1", "typed 2", "typed 3"])
       |> assert_script_result(kept_nodes, fields)
     end
 
-    feature "reordering a list whose body holds a block", %{session: session} do
+    test "reordering a list whose body holds a block", %{page: page} do
       # Read as one line of text so an entry rendered twice, or one that lost its star, shows up
       # here - the failure leaves the list half-updated rather than empty.
       rendered_feed = """
       return document.getElementById("feed").innerText.replace(/\\s+/g, " ").trim();
       """
 
-      session
+      page
       |> visit(Page15)
-      |> assert_text(css("#result"), "Alpha, Bravo, Charlie, Delta")
+      |> assert_text("#result", "Alpha, Bravo, Charlie, Delta")
       |> assert_script_result(rendered_feed, "* Alpha * Bravo * Charlie * Delta")
-      |> click(button("Sort"))
-      |> assert_text(css("#result"), "Charlie, Alpha, Delta, Bravo")
+      |> click_button("Sort")
+      |> assert_text("#result", "Charlie, Alpha, Delta, Bravo")
       |> assert_script_result(rendered_feed, "* Charlie * Alpha * Delta * Bravo")
-      |> click(button("Sort"))
-      |> assert_text(css("#result"), "Delta, Charlie, Bravo, Alpha")
+      |> click_button("Sort")
+      |> assert_text("#result", "Delta, Charlie, Bravo, Alpha")
       |> assert_script_result(rendered_feed, "* Delta * Charlie * Bravo * Alpha")
     end
 
-    feature "the key an element is diffed by never reaches the markup", %{session: session} do
+    test "the key an element is diffed by never reaches the markup", %{page: page} do
       # The key is written as an attribute because that is how a value reaches an element through
       # every path a template has, but it is never one: the server leaves it out of the markup and
       # the client turns it into the vnode's key. Checked on both renderers' output, since either
@@ -1143,15 +1132,15 @@ defmodule HologramFeatureTests.PatchingTest do
         .filter((name) => name.startsWith("$"));
       """
 
-      session
+      page
       |> visit(Page15)
       |> assert_script_result(framework_attributes, [])
-      |> click(button("Sort"))
-      |> assert_text(css("#result"), "Charlie, Alpha, Delta, Bravo")
+      |> click_button("Sort")
+      |> assert_text("#result", "Charlie, Alpha, Delta, Bravo")
       |> assert_script_result(framework_attributes, [])
     end
 
-    feature "no node of the framework's own is left in the page", %{session: session} do
+    test "no node of the framework's own is left in the page", %{page: page} do
       # Blocks used to be bracketed in comment markers so that a block changing how many nodes it
       # renders could not shift the identity of its siblings. Keys do that job now, and the page
       # holds only the nodes the template asks for.
@@ -1176,173 +1165,173 @@ defmodule HologramFeatureTests.PatchingTest do
 
       authored = ["a comment the template author wrote"]
 
-      session
+      page
       |> visit(Page15)
       |> assert_script_result(comments, authored)
-      |> click(button("Sort"))
-      |> assert_text(css("#result"), "Charlie, Alpha, Delta, Bravo")
+      |> click_button("Sort")
+      |> assert_text("#result", "Charlie, Alpha, Delta, Bravo")
       |> assert_script_result(comments, authored)
-      |> click(button("Sort"))
-      |> assert_text(css("#result"), "Delta, Charlie, Bravo, Alpha")
+      |> click_button("Sort")
+      |> assert_text("#result", "Delta, Charlie, Bravo, Alpha")
       |> assert_script_result(comments, authored)
     end
   end
 
   describe "keyed lists" do
-    feature "rows keep their nodes, typed values and focus when the first row is removed", %{
-      session: session
+    test "rows keep their nodes, typed values and focus when the first row is removed", %{
+      page: page
     } do
-      session
+      page
       |> visit(Page20)
-      |> assert_text(css("#result"), "Alpha, Bravo, Charlie")
-      |> fill_in(css("#input_1"), with: "typed 1")
-      |> fill_in(css("#input_2"), with: "typed 2")
-      |> fill_in(css("#input_3"), with: "typed 3")
+      |> assert_text("#result", "Alpha, Bravo, Charlie")
+      |> fill_in("#input_1", with: "typed 1")
+      |> fill_in("#input_2", with: "typed 2")
+      |> fill_in("#input_3", with: "typed 3")
       |> mark_nodes(@page20_rows)
       |> focus_by_script("input_2")
       |> click_by_script("remove_first")
-      |> assert_text(css("#result"), ~r/^Bravo, Charlie$/)
+      |> assert_text("#result", ~r/^Bravo, Charlie$/)
       |> assert_script_result(row_ids_script("rows"), ["row_2", "row_3"])
       |> assert_input_value("#input_2", "typed 2")
       |> assert_input_value("#input_3", "typed 3")
       |> assert_script_result(kept_nodes_script(["row_2", "row_3"]), ["row_2", "row_3"])
-      |> assert_script_result(~s|return document.activeElement.id;|, "input_2")
+      |> assert_focused("#input_2")
     end
 
-    feature "rows keep their nodes and typed values when the list is reversed", %{
-      session: session
+    test "rows keep their nodes and typed values when the list is reversed", %{
+      page: page
     } do
-      session
+      page
       |> visit(Page20)
-      |> assert_text(css("#result"), "Alpha, Bravo, Charlie")
-      |> fill_in(css("#input_1"), with: "typed 1")
-      |> fill_in(css("#input_3"), with: "typed 3")
+      |> assert_text("#result", "Alpha, Bravo, Charlie")
+      |> fill_in("#input_1", with: "typed 1")
+      |> fill_in("#input_3", with: "typed 3")
       |> mark_nodes(@page20_rows)
-      |> click(css("#reverse"))
-      |> assert_text(css("#result"), ~r/^Charlie, Bravo, Alpha$/)
+      |> click("#reverse")
+      |> assert_text("#result", ~r/^Charlie, Bravo, Alpha$/)
       |> assert_script_result(row_ids_script("rows"), ["row_3", "row_2", "row_1"])
       |> assert_input_value("#input_1", "typed 1")
       |> assert_input_value("#input_3", "typed 3")
       |> assert_script_result(kept_nodes_script(@page20_rows), @page20_rows)
     end
 
-    feature "rows keep their nodes, typed values and focus when a row is inserted in the middle",
-            %{session: session} do
-      session
+    test "rows keep their nodes, typed values and focus when a row is inserted in the middle",
+         %{page: page} do
+      page
       |> visit(Page20)
-      |> assert_text(css("#result"), "Alpha, Bravo, Charlie")
-      |> fill_in(css("#input_2"), with: "typed 2")
+      |> assert_text("#result", "Alpha, Bravo, Charlie")
+      |> fill_in("#input_2", with: "typed 2")
       |> mark_nodes(@page20_rows)
       |> focus_by_script("input_2")
       |> click_by_script("insert_in_middle")
-      |> assert_text(css("#result"), ~r/^Alpha, Delta, Bravo, Charlie$/)
+      |> assert_text("#result", ~r/^Alpha, Delta, Bravo, Charlie$/)
       |> assert_script_result(row_ids_script("rows"), ["row_1", "row_4", "row_2", "row_3"])
       |> assert_input_value("#input_2", "typed 2")
       |> assert_input_value("#input_4", "")
       |> assert_script_result(kept_nodes_script(@page20_rows), @page20_rows)
-      |> assert_script_result(~s|return document.activeElement.id;|, "input_2")
+      |> assert_focused("#input_2")
     end
 
-    feature "a spent once binding stays with its item when the item before it is removed", %{
-      session: session
+    test "a spent once binding stays with its item when the item before it is removed", %{
+      page: page
     } do
       # Matched by position, Bravo's row would take over the spent node and its claim would never
       # dispatch.
-      session
+      page
       |> visit(Page20)
-      |> click(css("#claim_1"))
-      |> assert_text(css("#claims"), ~r/^Alpha$/)
-      |> click(css("#remove_first"))
-      |> assert_text(css("#result"), ~r/^Bravo, Charlie$/)
-      |> click(css("#claim_2"))
-      |> assert_text(css("#claims"), ~r/^Alpha, Bravo$/)
+      |> click("#claim_1")
+      |> assert_text("#claims", ~r/^Alpha$/)
+      |> click("#remove_first")
+      |> assert_text("#result", ~r/^Bravo, Charlie$/)
+      |> click("#claim_2")
+      |> assert_text("#claims", ~r/^Alpha, Bravo$/)
     end
 
-    feature "a spent once binding stays with its item across a reorder", %{session: session} do
+    test "a spent once binding stays with its item across a reorder", %{page: page} do
       # Alpha's binding is spent wherever its row went, and Charlie's row, now first, is still
       # armed. Matched by position instead, Charlie would inherit the spent node and Alpha a fresh
       # one.
-      session
+      page
       |> visit(Page20)
       |> mark_nodes(@page20_rows)
-      |> click(css("#claim_1"))
-      |> assert_text(css("#claims"), ~r/^Alpha$/)
-      |> click(css("#reverse"))
-      |> assert_text(css("#result"), ~r/^Charlie, Bravo, Alpha$/)
+      |> click("#claim_1")
+      |> assert_text("#claims", ~r/^Alpha$/)
+      |> click("#reverse")
+      |> assert_text("#result", ~r/^Charlie, Bravo, Alpha$/)
       |> assert_script_result(kept_nodes_script(@page20_rows), @page20_rows)
-      |> click(css("#claim_1"))
-      |> click(css("#claim_3"))
-      |> assert_text(css("#claims"), ~r/^Alpha, Charlie$/)
+      |> click("#claim_1")
+      |> click("#claim_3")
+      |> assert_text("#claims", ~r/^Alpha, Charlie$/)
     end
 
-    feature "a navigation to the page keeps the rows its first patch put on screen", %{
-      session: session
+    test "a navigation to the page keeps the rows its first patch put on screen", %{
+      page: page
     } do
       # The navigation's first patch builds the rows from the tree the server sent, and the render
       # that follows keys them itself: keys that disagree with the server's rebuild every row,
       # which runs its script again. The flag set before the click survives only a navigation the
       # client made, so it proves the rows came from the tree rather than from a page load.
-      session = visit(session, Page21)
+      page = visit(page, Page21)
 
-      script_result(session, "window.__fromPage21 = true;")
+      script_result(page, "window.__fromPage21 = true;")
 
-      session
-      |> click(link("Keyed list link"))
+      page
+      |> click_link("Keyed list link")
       |> assert_page(Page20)
       |> assert_script_result("return window.__fromPage21 === true;", true)
       |> assert_script_result("return window.__rowRuns;", 3)
-      |> click(css("#reverse"))
-      |> assert_text(css("#result"), ~r/^Charlie, Bravo, Alpha$/)
+      |> click("#reverse")
+      |> assert_text("#result", ~r/^Charlie, Bravo, Alpha$/)
       |> assert_script_result("return window.__rowRuns;", 3)
       |> assert_script_result(stamped_rows_script(@page20_rows), @page20_rows)
     end
 
-    feature "the first render keeps the rows the server sent", %{session: session} do
+    test "the first render keeps the rows the server sent", %{page: page} do
       # On a page load the first patch takes its keys from the client's own render, so this guards
       # that loop items are adopted at boot, not that the server's keys agree - the navigation
       # feature above guards that.
-      session
+      page
       |> visit(Page20)
-      |> click(css("#reverse"))
-      |> assert_text(css("#result"), ~r/^Charlie, Bravo, Alpha$/)
+      |> click("#reverse")
+      |> assert_text("#result", ~r/^Charlie, Bravo, Alpha$/)
       |> assert_script_result("return window.__rowRuns;", 3)
       |> assert_script_result(stamped_rows_script(@page20_rows), @page20_rows)
     end
   end
 
   describe "explicitly keyed lists" do
-    feature "rows keyed by a $key on their element keep their nodes and typed values", %{
-      session: session
+    test "rows keyed by a $key on their element keep their nodes and typed values", %{
+      page: page
     } do
-      assert_rows_follow_their_items(session, Page22, "element")
+      assert_rows_follow_their_items(page, Page22, "element")
     end
 
-    feature "rows keyed by a $key on a stateless component keep their nodes and typed values", %{
-      session: session
+    test "rows keyed by a $key on a stateless component keep their nodes and typed values", %{
+      page: page
     } do
-      assert_rows_follow_their_items(session, Page22, "component")
+      assert_rows_follow_their_items(page, Page22, "component")
     end
 
-    feature "stateful component rows keyed by their cid keep their nodes and typed values", %{
-      session: session
+    test "stateful component rows keyed by their cid keep their nodes and typed values", %{
+      page: page
     } do
-      assert_rows_follow_their_items(session, Page22, "stateful")
+      assert_rows_follow_their_items(page, Page22, "stateful")
     end
 
-    feature "rows keyed by an identifier $key keep their nodes and typed values", %{
-      session: session
+    test "rows keyed by an identifier $key keep their nodes and typed values", %{
+      page: page
     } do
-      assert_rows_follow_their_items(session, Page23, "identifier")
+      assert_rows_follow_their_items(page, Page23, "identifier")
     end
 
-    feature "rows keyed by a record $key keep their nodes and typed values", %{
-      session: session
+    test "rows keyed by a record $key keep their nodes and typed values", %{
+      page: page
     } do
-      assert_rows_follow_their_items(session, Page23, "record")
+      assert_rows_follow_their_items(page, Page23, "record")
     end
 
-    feature "a navigation to the page keeps the rows its first patch put on screen", %{
-      session: session
+    test "a navigation to the page keeps the rows its first patch put on screen", %{
+      page: page
     } do
       # The navigation's first patch builds the rows from the tree the server sent, and the render
       # that follows keys them itself: a list whose keys disagree with the server's rebuilds its
@@ -1354,24 +1343,24 @@ defmodule HologramFeatureTests.PatchingTest do
             name <- ["alpha", "bravo", "charlie"],
             do: "#{kind}_row_#{name}"
 
-      session = visit(session, Page21)
+      page = visit(page, Page21)
 
-      script_result(session, "window.__fromPage21 = true;")
+      script_result(page, "window.__fromPage21 = true;")
 
-      session
-      |> click(link("Explicitly keyed lists link"))
+      page
+      |> click_link("Explicitly keyed lists link")
       |> assert_page(Page22)
       |> assert_script_result("return window.__fromPage21 === true;", true)
       |> assert_script_result("return window.__rowRuns;", 9)
-      |> click(css("#reverse"))
-      |> assert_text(css("#result"), ~r/^charlie, bravo, alpha$/)
+      |> click("#reverse")
+      |> assert_text("#result", ~r/^charlie, bravo, alpha$/)
       |> assert_script_result("return window.__rowRuns;", 9)
       |> assert_script_result(stamped_rows_script(rows), rows)
     end
   end
 
   describe "adopting the server-rendered page" do
-    feature "the first render keeps the nodes the server sent", %{session: session} do
+    test "the first render keeps the nodes the server sent", %{page: page} do
       server_nodes = """
       return ["kept", "hint", "field", "marked", "result", "photo"].filter(
         (id) => document.getElementById(id).__fromServer === true,
@@ -1391,25 +1380,25 @@ defmodule HologramFeatureTests.PatchingTest do
       # which it no longer names, are gone rather than rebuilt.
       adopted_head = [["meta", true], ["meta", true], ["script", true], ["style", true]]
 
-      session =
-        session
+      page =
+        page
         |> visit(Page16)
-        |> assert_text(css("#result"), "0")
-        |> fill_in(css("#field"), with: "typed")
+        |> assert_text("#result", "0")
+        |> fill_in("#field", with: "typed")
 
       # Waiting for a click to land proves the client has rendered: the assertions below would
       # pass on their own against a page that had booted no further than the server's markup.
-      session
-      |> click(button("Increment"))
-      |> assert_text(css("#result"), "1")
+      page
+      |> click_button("Increment")
+      |> assert_text("#result", "1")
       # A script element runs when it is created, so a second run means the first patch rebuilt
       # the page rather than adopting it - and it would fire a real page's analytics twice.
       |> assert_script_result("return window.__scriptRuns;", 1)
       |> assert_script_result(server_nodes, ids)
       |> assert_script_result(head_nodes, adopted_head)
       |> assert_input_value("#field", "typed")
-      |> click(button("Increment"))
-      |> assert_text(css("#result"), "2")
+      |> click_button("Increment")
+      |> assert_text("#result", "2")
       |> assert_script_result("return window.__scriptRuns;", 1)
       |> assert_script_result(server_nodes, ids)
       |> assert_script_result(head_nodes, adopted_head)
@@ -1420,7 +1409,7 @@ defmodule HologramFeatureTests.PatchingTest do
       |> assert_script_result("return window.__imageLoads;", 1)
     end
 
-    feature "the first render keeps the state those nodes hold", %{session: session} do
+    test "the first render keeps the state those nodes hold", %{page: page} do
       # Incremented from a script rather than by the driver so the button never takes focus: the
       # focus below is then the one the page set before booting, which is the thing under test.
       increment = ~s|document.querySelector("button").click();|
@@ -1436,18 +1425,18 @@ defmodule HologramFeatureTests.PatchingTest do
       ];
       """
 
-      session = visit(session, Page16)
+      page = visit(page, Page16)
 
-      script_result(session, increment)
+      script_result(page, increment)
 
-      session
-      |> assert_text(css("#result"), "1")
+      page
+      |> assert_text("#result", "1")
       |> assert_script_result(state, ["field", 2, 5, 30])
     end
   end
 
   describe "adopting an element whose tag name carries case" do
-    feature "the first render keeps the SVG element the server sent", %{session: session} do
+    test "the first render keeps the SVG element the server sent", %{page: page} do
       server_nodes = """
       return ["art", "grad"].filter(
         (id) => document.getElementById(id).__fromServer === true,
@@ -1456,13 +1445,13 @@ defmodule HologramFeatureTests.PatchingTest do
 
       ids = ["art", "grad"]
 
-      session
+      page
       |> visit(Page18)
-      |> assert_text(css("#result"), "0")
+      |> assert_text("#result", "0")
       # Waiting for a click to land proves the client has rendered: the assertions below would
       # pass on their own against a page that had booted no further than the server's markup.
-      |> click(button("Increment"))
-      |> assert_text(css("#result"), "1")
+      |> click_button("Increment")
+      |> assert_text("#result", "1")
       # A script element runs when it is created, so a second run means the first render rebuilt
       # the page rather than adopting it, and the stamps below would be its own work.
       |> assert_script_result("return window.__scriptRuns;", 1)
@@ -1471,21 +1460,21 @@ defmodule HologramFeatureTests.PatchingTest do
   end
 
   describe "building an element the server never sent" do
-    feature "an SVG tag name is built under the name the parser gives it", %{session: session} do
+    test "an SVG tag name is built under the name the parser gives it", %{page: page} do
       name = ~s|return document.getElementById("grad").localName;|
 
-      session
+      page
       |> visit(Page19)
-      |> assert_text(css("#result"), "false")
-      |> click(button("Show"))
-      |> assert_text(css("#result"), "true")
+      |> assert_text("#result", "false")
+      |> click_button("Show")
+      |> assert_text("#result", "true")
       |> assert_script_result(name, "linearGradient")
     end
   end
 
   describe "element state across a patch" do
-    feature "a scrolled container holds its place when a sibling appears", %{
-      session: session
+    test "a scrolled container holds its place when a sibling appears", %{
+      page: page
     } do
       scroll = ~s|document.getElementById("feed").scrollTop = 30;|
 
@@ -1495,23 +1484,23 @@ defmodule HologramFeatureTests.PatchingTest do
 
       scroll_top = ~s|return document.getElementById("feed").scrollTop;|
 
-      session = visit(session, Page17)
+      page = visit(page, Page17)
 
-      script_result(session, scroll)
+      script_result(page, scroll)
 
-      session
-      |> assert_text(css("#result"), "false")
+      page
+      |> assert_text("#result", "false")
       |> assert_script_result(scroll_top, 30)
 
-      script_result(session, toggle)
+      script_result(page, toggle)
 
-      session
-      |> assert_text(css("#result"), "true")
+      page
+      |> assert_text("#result", "true")
       |> assert_count(".banner", 3)
       |> assert_script_result(scroll_top, 30)
     end
 
-    feature "a selection survives a sibling appearing", %{session: session} do
+    test "a selection survives a sibling appearing", %{page: page} do
       select = """
       const field = document.getElementById("field");
 
@@ -1529,23 +1518,23 @@ defmodule HologramFeatureTests.PatchingTest do
       return [field.value, field.selectionStart, field.selectionEnd];
       """
 
-      session = visit(session, Page17)
+      page = visit(page, Page17)
 
-      script_result(session, select)
+      script_result(page, select)
 
-      session
-      |> assert_text(css("#result"), "false")
+      page
+      |> assert_text("#result", "false")
       |> assert_script_result(selection, ["server text", 2, 5])
 
-      script_result(session, toggle)
+      script_result(page, toggle)
 
-      session
-      |> assert_text(css("#result"), "true")
+      page
+      |> assert_text("#result", "true")
       |> assert_count(".banner", 3)
       |> assert_script_result(selection, ["server text", 2, 5])
     end
 
-    feature "an image is not loaded again when a sibling appears", %{session: session} do
+    test "an image is not loaded again when a sibling appears", %{page: page} do
       mark = ~s|document.getElementById("photo").__probe = "photo";|
 
       toggle = ~s|document.querySelector("button").click();|
@@ -1560,53 +1549,53 @@ defmodule HologramFeatureTests.PatchingTest do
       ];
       """
 
-      session = visit(session, Page17)
+      page = visit(page, Page17)
 
-      script_result(session, mark)
+      script_result(page, mark)
 
-      session
-      |> assert_text(css("#result"), "false")
+      page
+      |> assert_text("#result", "false")
       |> assert_script_result(photo, ["photo", 1])
 
-      script_result(session, toggle)
+      script_result(page, toggle)
 
-      session
-      |> assert_text(css("#result"), "true")
+      page
+      |> assert_text("#result", "true")
       |> assert_count(".banner", 3)
       |> assert_script_result(photo, ["photo", 1])
     end
   end
 
   describe "form element values the browser reformats" do
-    feature "a re-render leaves a color the browser lowercased alone", %{session: session} do
-      session
+    test "a re-render leaves a color the browser lowercased alone", %{page: page} do
+      page
       |> visit(Page24)
-      |> click(button("Rerender"))
-      |> click(button("Rerender"))
-      |> assert_text(css("#result"), "2")
+      |> click_button("Rerender")
+      |> click_button("Rerender")
+      |> assert_text("#result", "2")
       # The one write is the first render's: the attribute the server sent is removed when the
       # client takes the page over, and the value from state is written in its place.
       |> assert_script_result("return window.__valueWrites.color_input;", 1)
     end
 
-    feature "a re-render leaves a range value the browser snapped to its step alone", %{
-      session: session
+    test "a re-render leaves a range value the browser snapped to its step alone", %{
+      page: page
     } do
       writes = "return window.__valueWrites.range_input;"
 
-      session
+      page
       |> visit(Page24)
       # The first render's write, as for the color input above.
       |> assert_script_result(writes, 1)
-      |> click(button("Rerender"))
-      |> click(button("Rerender"))
-      |> click(button("Rerender"))
-      |> assert_text(css("#result"), "3")
+      |> click_button("Rerender")
+      |> click_button("Rerender")
+      |> click_button("Rerender")
+      |> assert_text("#result", "3")
       |> assert_script_result(~s|return document.getElementById("range_input").value;|, "50")
       |> assert_script_result(writes, 1)
     end
 
-    feature "a picked color the action upcases is not written back", %{session: session} do
+    test "a picked color the action upcases is not written back", %{page: page} do
       pick = """
       const input = document.getElementById("color_input");
 
@@ -1614,15 +1603,15 @@ defmodule HologramFeatureTests.PatchingTest do
       input.dispatchEvent(new Event("input", {bubbles: true}));
       """
 
-      session =
-        session
+      page =
+        page
         |> visit(Page24)
         |> assert_script_result("return window.__valueWrites.color_input;", 1)
 
-      script_result(session, pick)
+      script_result(page, pick)
 
-      session
-      |> assert_text(css("#state"), "#FF8800")
+      page
+      |> assert_text("#state", "#FF8800")
       |> assert_script_result("return window.__valueWrites.color_input;", 1)
     end
   end

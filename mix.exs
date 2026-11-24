@@ -87,7 +87,7 @@ defmodule Hologram.MixProject do
       {:sobelow, "~> 0.12", only: [:dev, :test], runtime: false},
       {:telemetry, "~> 1.0"},
       {:uuid, "~> 1.0"},
-      {:wallaby, "~> 0.30", only: [:dev, :test], runtime: false},
+      {:playwright, "~> 1.65.0-rc.4", hex: :playwright_ex, only: [:dev, :test], runtime: false},
       {:websock_adapter, "~> 0.5"}
     ]
   end
@@ -138,7 +138,7 @@ defmodule Hologram.MixProject do
       description:
         "Full stack isomorphic Elixir web framework that can be used on top of Phoenix.",
       dialyzer: [
-        plt_add_apps: [:ex_unit, :iex, :mix, :wallaby],
+        plt_add_apps: [:ex_unit, :iex, :mix, :playwright],
         # Never in "priv": Mix links the build priv dir to the project's priv dir when it has one,
         # and only the CI job that holds the PLTs would have it, so the build caches of the CI jobs
         # would differ.

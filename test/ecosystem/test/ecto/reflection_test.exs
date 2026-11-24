@@ -33,10 +33,10 @@ defmodule HologramEcosystemTests.Ecto.ReflectionTest do
     assert defines?(bundle, :__changeset__, 0)
   end
 
-  feature "the reflection function runs on the client", %{session: session} do
-    session
+  test "the reflection function runs on the client", %{page: page} do
+    page
     |> visit(OpenPage)
-    |> click(button("Reflect"))
-    |> assert_text(css("#fields"), "id,name")
+    |> click_button("Reflect")
+    |> assert_text("#fields", "id,name")
   end
 end

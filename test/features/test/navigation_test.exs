@@ -20,52 +20,52 @@ defmodule HologramFeatureTests.NavigationTest do
   """
 
   describe "link component" do
-    feature "without params", %{session: session} do
-      session
+    test "without params", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> assert_text("Page 2 title")
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> assert_text("Page 2 result A")
     end
 
-    feature "with params", %{session: session} do
-      session
+    test "with params", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(link("Page 3 link"))
+      |> click_link("Page 3 link")
       |> assert_page(Page3, s: "abc", i: "123")
       |> assert_text("Page 3 title")
       |> assert_text(~s'%{i: 123, s: "abc"}')
-      |> click(button("Put page 3 result"))
+      |> click_button("Put page 3 result")
       |> assert_text("Page 3 result")
     end
 
-    feature "with percent-encoded params", %{session: session} do
-      session
+    test "with percent-encoded params", %{page: page} do
+      page
       |> visit(Page5)
-      |> click(link("Link with percent-encoded params"))
+      |> click_link("Link with percent-encoded params")
       |> assert_page(RouteWithPercentEncodedParamsPage, a: "hello world", b: "foo/bar")
       |> assert_text("Route With Percent Encoded Params Page")
-      |> assert_text(css("#param_a"), ~s'"hello world"')
-      |> assert_text(css("#param_b"), ~s'"foo/bar"')
+      |> assert_text("#param_a", ~s'"hello world"')
+      |> assert_text("#param_b", ~s'"foo/bar"')
     end
 
     # Enter on a focused link fires click with no pointerdown before it.
-    feature "activated with the keyboard", %{session: session} do
-      session
+    test "activated with the keyboard", %{page: page} do
+      page
       |> visit(Page1)
-      |> send_keys(link("Page 2 link"), [:enter])
+      |> send_keys(Page.get_by_role(page, :link, name: "Page 2 link"), "Enter")
       |> assert_page(Page2)
       |> assert_text("Page 2 title")
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> assert_text("Page 2 result A")
     end
 
     # element.click() fires click with no pointerdown before it, the way screen readers often
     # activate a link.
-    feature "clicked from a script", %{session: session} do
-      session
+    test "clicked from a script", %{page: page} do
+      page
       |> visit(Page1)
       |> execute_script("""
       Array.from(document.querySelectorAll("a"))
@@ -74,31 +74,31 @@ defmodule HologramFeatureTests.NavigationTest do
       """)
       |> assert_page(Page2)
       |> assert_text("Page 2 title")
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> assert_text("Page 2 result A")
     end
   end
 
   describe "history" do
-    feature "go back", %{session: session} do
-      session
+    test "go back", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
-      |> click(link("Page 2 link"))
+      |> click_button("Put page 1 result A")
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> go_back()
       |> assert_page(Page1)
       |> assert_text("Page 1 title")
       |> assert_text("Page 1 result A")
-      |> click(button("Put page 1 result B"))
+      |> click_button("Put page 1 result B")
       |> assert_text("Page 1 result B")
     end
 
-    feature "go back after reload", %{session: session} do
-      session
+    test "go back after reload", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
-      |> click(link("Page 2 link"))
+      |> click_button("Put page 1 result A")
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> reload()
       |> assert_page(Page2)
@@ -106,47 +106,47 @@ defmodule HologramFeatureTests.NavigationTest do
       |> assert_page(Page1)
       |> assert_text("Page 1 title")
       |> assert_text("Page 1 result A")
-      |> click(button("Put page 1 result B"))
+      |> click_button("Put page 1 result B")
       |> assert_text("Page 1 result B")
     end
 
-    feature "go back to Hologram page (from non-Hologram page)", %{session: session} do
-      session
+    test "go back to Hologram page (from non-Hologram page)", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
+      |> click_button("Put page 1 result A")
       |> assert_text("Page 1 result A")
-      |> click(link("External link"))
+      |> click_link("External link")
       |> assert_text("External Page")
       |> go_back()
       |> assert_page(Page1)
       |> assert_text("Page 1 title")
       |> assert_text("Page 1 result A")
-      |> click(button("Put page 1 result B"))
+      |> click_button("Put page 1 result B")
       |> assert_text("Page 1 result B")
     end
 
-    feature "go forward", %{session: session} do
-      session
+    test "go forward", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> go_back()
       |> assert_page(Page1)
       |> go_forward()
       |> assert_page(Page2)
       |> assert_text("Page 2 title")
       |> assert_text("Page 2 result A")
-      |> click(button("Put page 2 result B"))
+      |> click_button("Put page 2 result B")
       |> assert_text("Page 2 result B")
     end
 
-    feature "go forward after reload", %{session: session} do
-      session
+    test "go forward after reload", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> go_back()
       |> assert_page(Page1)
       |> reload()
@@ -155,16 +155,16 @@ defmodule HologramFeatureTests.NavigationTest do
       |> assert_page(Page2)
       |> assert_text("Page 2 title")
       |> assert_text("Page 2 result A")
-      |> click(button("Put page 2 result B"))
+      |> click_button("Put page 2 result B")
       |> assert_text("Page 2 result B")
     end
 
-    feature "go forward to Hologram page (from non-Hologram page)", %{session: session} do
-      session
+    test "go forward to Hologram page (from non-Hologram page)", %{page: page} do
+      page
       |> visit("/external")
       |> assert_text("External Page")
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
+      |> click_button("Put page 1 result A")
       |> assert_text("Page 1 result A")
       |> go_back()
       |> assert_text("External Page")
@@ -172,7 +172,7 @@ defmodule HologramFeatureTests.NavigationTest do
       |> assert_page(Page1)
       |> assert_text("Page 1 title")
       |> assert_text("Page 1 result A")
-      |> click(button("Put page 1 result B"))
+      |> click_button("Put page 1 result B")
       |> assert_text("Page 1 result B")
     end
   end
@@ -180,8 +180,8 @@ defmodule HologramFeatureTests.NavigationTest do
   describe "first load" do
     # The runtime tags the document's history entry with its id on boot. The tag must leave the
     # entry's URL as opened, so the query string and fragment stay in the address bar.
-    feature "keeps the query string and fragment of the opened URL", %{session: session} do
-      session
+    test "keeps the query string and fragment of the opened URL", %{page: page} do
+      page
       |> visit("/navigation/1?view=grid#row-42")
       |> assert_page(Page1)
       |> assert_script_result(
@@ -191,13 +191,13 @@ defmodule HologramFeatureTests.NavigationTest do
     end
   end
 
-  feature "put page in action", %{session: session} do
-    session
+  test "put page in action", %{page: page} do
+    page
     |> visit(Page1)
-    |> click(button("Change page"))
+    |> click_button("Change page")
     |> assert_page(Page2)
     |> assert_text("Page 2 title")
-    |> click(button("Put page 2 result A"))
+    |> click_button("Put page 2 result A")
     |> assert_text("Page 2 result A")
   end
 
@@ -212,26 +212,26 @@ defmodule HologramFeatureTests.NavigationTest do
     # is why the absence is also asserted where it is deterministic: the tree the controller sends
     # holds no block (controller_test.exs), and the component renders none off the initial page
     # (ui/runtime_test.exs).
-    feature "a navigated page hydrates without a boot data block", %{session: session} do
+    test "a navigated page hydrates without a boot data block", %{page: page} do
       no_boot_data_block = ~s|return document.querySelector("#hologram-boot-data") === null;|
 
-      session
+      page
       |> visit(Page1)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> assert_text("Page 2 title")
       |> assert_script_result(no_boot_data_block, true)
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> assert_text("Page 2 result A")
       |> assert_script_result(no_boot_data_block, true)
     end
   end
 
   describe "component state management" do
-    feature "page reload resets component state", %{session: session} do
-      session
+    test "page reload resets component state", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
+      |> click_button("Put page 1 result A")
       |> assert_text("Page 1 result A")
       |> reload()
       |> assert_page(Page1)
@@ -240,13 +240,13 @@ defmodule HologramFeatureTests.NavigationTest do
 
     # The mark makes the asserts wait for the new document: the old one shows the same page, and
     # the new one shows the server's HTML until the client has mounted, snapshot or not.
-    feature "full load of the same page resets component state", %{session: session} do
-      session
+    test "full load of the same page resets component state", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
+      |> click_button("Put page 1 result A")
       |> assert_text("Page 1 result A")
       |> mark_document()
-      |> click(link("Page 1 plain link"))
+      |> click_link("Page 1 plain link")
       |> wait_for_unmarked_document()
       |> assert_page(Page1)
       |> assert_text("Page result: nil")
@@ -256,24 +256,23 @@ defmodule HologramFeatureTests.NavigationTest do
     # and then by a full page load, which stores a newer one in session storage. The new document
     # Back loads restores the newer one. The script checks that the older one is in OPFS, and the
     # mark makes the test fail if the browser brings the page back from its back/forward cache.
-    feature "back from a page outside the app restores the state the page was last left in", %{
-      session: session
+    test "back from a page outside the app restores the state the page was last left in", %{
+      page: page
     } do
-      session
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
+      |> click_button("Put page 1 result A")
       |> assert_text("Page 1 result A")
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> go_back()
       |> assert_page(Page1)
       |> assert_text("Page 1 result A")
-      |> click(button("Put page 1 result B"))
+      |> click_button("Put page 1 result B")
       |> assert_text("Page 1 result B")
       |> assert_script_result(@stored_in_opfs_script, true)
-      |> keep_out_of_back_forward_cache()
       |> mark_document()
-      |> click(link("External link"))
+      |> click_link("External link")
       |> assert_text("External Page")
       |> go_back()
       |> assert_page(Page1)
@@ -281,24 +280,24 @@ defmodule HologramFeatureTests.NavigationTest do
       |> assert_text("Page 1 result B")
     end
 
-    feature "back navigation preserves component state", %{session: session} do
-      session
+    test "back navigation preserves component state", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
+      |> click_button("Put page 1 result A")
       |> assert_text("Page 1 result A")
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> go_back()
       |> assert_page(Page1)
       |> assert_text("Page 1 result A")
     end
 
-    feature "forward navigation preserves component state", %{session: session} do
-      session
+    test "forward navigation preserves component state", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> assert_text("Page 2 result A")
       |> go_back()
       |> assert_page(Page1)
@@ -307,14 +306,14 @@ defmodule HologramFeatureTests.NavigationTest do
       |> assert_text("Page 2 result A")
     end
 
-    feature "page reload after navigation resets component state", %{session: session} do
-      session
+    test "page reload after navigation resets component state", %{page: page} do
+      page
       |> visit(Page1)
-      |> click(button("Put page 1 result A"))
+      |> click_button("Put page 1 result A")
       |> assert_text("Page 1 result A")
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
-      |> click(button("Put page 2 result A"))
+      |> click_button("Put page 2 result A")
       |> assert_text("Page 2 result A")
       |> reload()
       |> assert_page(Page2)
@@ -328,33 +327,33 @@ defmodule HologramFeatureTests.NavigationTest do
   end
 
   describe "scroll position" do
-    feature "when navigating to a new page", %{session: session} do
-      session
+    test "when navigating to a new page", %{page: page} do
+      page
       |> visit(Page4)
       |> scroll_to(10, 20)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> assert_scroll_position(0, 0)
     end
 
-    feature "when using history navigation without reload, within Hologram app", %{
-      session: session
+    test "when using history navigation without reload, within Hologram app", %{
+      page: page
     } do
-      session
+      page
       |> visit(Page4)
       |> scroll_to(10, 20)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> go_back()
       |> assert_page(Page4)
       |> assert_scroll_position(10, 20)
     end
 
-    feature "when using history navigation with reload, within Hologram app", %{session: session} do
-      session
+    test "when using history navigation with reload, within Hologram app", %{page: page} do
+      page
       |> visit(Page4)
       |> scroll_to(10, 20)
-      |> click(link("Page 2 link"))
+      |> click_link("Page 2 link")
       |> assert_page(Page2)
       |> reload()
       |> assert_page(Page2)
@@ -363,11 +362,11 @@ defmodule HologramFeatureTests.NavigationTest do
       |> assert_scroll_position(10, 20)
     end
 
-    feature "when using history navigation coming from non-Hologram page", %{session: session} do
-      session
+    test "when using history navigation coming from non-Hologram page", %{page: page} do
+      page
       |> visit(Page4)
       |> scroll_to(10, 20)
-      |> click(link("External link"))
+      |> click_link("External link")
       |> assert_text("External Page")
       |> go_back()
       |> assert_page(Page4)
@@ -379,21 +378,21 @@ defmodule HologramFeatureTests.NavigationTest do
     # The layout's nodes are the same on both pages, so a navigation must leave them alone: the
     # container's scroll position lives only in its DOM node and would not survive a rebuild.
     # The click on the new page proves the mount completed on those same adopted nodes.
-    feature "a scrolled layout container holds its place", %{session: session} do
+    test "a scrolled layout container holds its place", %{page: page} do
       scroll = ~s|document.getElementById("shell").scrollTop = 30;|
       scroll_top = ~s|return document.getElementById("shell").scrollTop;|
 
-      session = visit(session, Page6)
+      page = visit(page, Page6)
 
-      script_result(session, scroll)
+      script_result(page, scroll)
 
-      session
+      page
       |> assert_script_result(scroll_top, 30)
-      |> click(link("Page 7 link"))
+      |> click_link("Page 7 link")
       |> assert_page(Page7)
       |> assert_text("Page 7 title")
       |> assert_script_result(scroll_top, 30)
-      |> click(button("Put page 7 result"))
+      |> click_button("Put page 7 result")
       |> assert_text("Page 7 result")
       |> assert_script_result(scroll_top, 30)
     end
@@ -406,15 +405,15 @@ defmodule HologramFeatureTests.NavigationTest do
     #
     # The rendered param alone would not catch that: the patch draws it either way. The click is
     # what needs a mount to have happened, and what it reports is the param the mount ran with.
-    feature "mounts without the page's bundle announcing itself", %{session: session} do
-      session
+    test "mounts without the page's bundle announcing itself", %{page: page} do
+      page
       |> visit(Page8, n: 1)
-      |> assert_text(css("#param_n"), "1")
-      |> click(link("Page 8 next link"))
+      |> assert_text("#param_n", "1")
+      |> click_link("Page 8 next link")
       |> assert_page(Page8, n: 2)
-      |> assert_text(css("#param_n"), "2")
-      |> click(button("Put page 8 result"))
-      |> assert_text(css("#page_result"), "2")
+      |> assert_text("#param_n", "2")
+      |> click_button("Put page 8 result")
+      |> assert_text("#page_result", "2")
     end
   end
 end
