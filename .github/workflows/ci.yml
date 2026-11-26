@@ -634,9 +634,9 @@ jobs:
       # picked up without a list to maintain. Must stay in sync with the partition
       # matrix above.
       - name: Run feature tests app Elixir tests
-        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh --partitions 8
+        run: '"$GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh" --partitions 8'
 
-      # Step: Archive the traces and screenshots of tests that failed.
+      # Step: Archive the JSON reports and failure artifacts.
       - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
         if: ${{ !cancelled() }}
@@ -750,9 +750,9 @@ jobs:
       # the suite doesn't touch the transport and runs over HTTP/1.1 in feature_tests. The
       # codebase checks run there too, so this job repeats none of them.
       - name: Run feature tests app Elixir tests over HTTPS
-        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh test/commands_test.exs test/realtime_test.exs test/sse_response_test.exs
+        run: '"$GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh" test/commands_test.exs test/realtime_test.exs test/sse_response_test.exs'
 
-      # Step: Archive the traces and screenshots of tests that failed.
+      # Step: Archive the JSON reports and failure artifacts.
       - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
         if: ${{ !cancelled() }}
@@ -913,9 +913,9 @@ jobs:
 
       # Step: Execute cluster tests app Elixir tests.
       - name: Run cluster tests app Elixir tests
-        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
+        run: '"$GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh"'
 
-      # Step: Archive the traces and screenshots of tests that failed.
+      # Step: Archive the JSON reports and failure artifacts.
       - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
         if: ${{ !cancelled() }}
@@ -1076,9 +1076,9 @@ jobs:
 
       # Step: Execute cowboy tests app Elixir tests.
       - name: Run cowboy tests app Elixir tests
-        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
+        run: '"$GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh"'
 
-      # Step: Archive the traces and screenshots of tests that failed.
+      # Step: Archive the JSON reports and failure artifacts.
       - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
         if: ${{ !cancelled() }}
@@ -1239,9 +1239,9 @@ jobs:
 
       # Step: Execute ecosystem tests app Elixir tests.
       - name: Run ecosystem tests app Elixir tests
-        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
+        run: '"$GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh"'
 
-      # Step: Archive the traces and screenshots of tests that failed.
+      # Step: Archive the JSON reports and failure artifacts.
       - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
         if: ${{ !cancelled() }}
@@ -1411,9 +1411,11 @@ jobs:
 
       # Step: Execute umbrella tests app Elixir tests.
       - name: Run umbrella tests app Elixir tests
-        run: $GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_DIR: apps/app_1/test-results
+        run: '"$GITHUB_WORKSPACE/.github/scripts/mix-test-retry.sh"'
 
-      # Step: Archive the traces and screenshots of tests that failed.
+      # Step: Archive the JSON reports and failure artifacts.
       - name: Archive test results
         # Execute the step even if the job has already failed, but don't execute it if the job has been canceled.
         if: ${{ !cancelled() }}

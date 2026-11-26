@@ -87,7 +87,7 @@ defmodule Hologram.MixProject do
       {:sobelow, "~> 0.12", only: [:dev, :test], runtime: false},
       {:telemetry, "~> 1.0"},
       {:uuid, "~> 1.0"},
-      {:playwright, "~> 1.65.0-rc.4", hex: :playwright_ex, only: [:dev, :test], runtime: false},
+      {:playwright, "~> 1.65.0-rc.6", hex: :playwright_ex, only: [:dev, :test], runtime: false},
       {:websock_adapter, "~> 0.5"}
     ]
   end

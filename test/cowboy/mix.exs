@@ -14,10 +14,10 @@ defmodule HologramCowboyTests.MixProject do
       {:dialyxir, "~> 1.0", only: [:dev, :test], runtime: false},
       {:hologram,
        git: "https://github.com/ftes/hologram.git",
-       ref: "6cc6eed1623dda243c008085086679197bb88501"},
+       ref: "e3ac31ddbe19cb25432c8f6834c20368c3c1eba4"},
       {:jason, "~> 1.0"},
       {:phoenix, "~> 1.7"},
-      {:playwright, "~> 1.65.0-rc.4", hex: :playwright_ex, only: :test},
+      {:playwright, "~> 1.65.0-rc.6", hex: :playwright_ex, only: :test},
       {:plug_cowboy, "~> 2.0"}
     ]
   end

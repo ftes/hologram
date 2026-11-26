@@ -9,12 +9,19 @@
 # umbrella prints it for each app without failures.)
 set -o pipefail
 
-formatters=(--formatter ExUnit.CLIFormatter --formatter Playwright.Test.GitHubFormatter)
+formatters=(
+  --formatter ExUnit.CLIFormatter
+  --formatter Playwright.Test.GitHubFormatter
+  --formatter Playwright.Test.JSONFormatter
+)
 log="$RUNNER_TEMP/mix-test-retry.log"
+export PLAYWRIGHT_JSON_OUTPUT_DIR="$PWD/${PLAYWRIGHT_JSON_OUTPUT_DIR:-test-results}"
 
-mix test --warnings-as-errors "$@" "${formatters[@]}" && exit 0
+PLAYWRIGHT_JSON_OUTPUT_NAME=report.json \
+  mix test --warnings-as-errors "$@" "${formatters[@]}" && exit 0
 status=$?
 [ "$status" -eq 2 ] || exit "$status"
 
-mix test --warnings-as-errors --failed "${formatters[@]}" | tee "$log" &&
+PLAYWRIGHT_JSON_OUTPUT_NAME=report-retry.json \
+  mix test --warnings-as-errors --failed "${formatters[@]}" | tee "$log" &&
   grep -q '^Running ExUnit with seed' "$log"

@@ -13,3 +13,5 @@ To run the tests:
   * Run `mix deps.get` to install the dependencies
   * Run `mix playwright.install chromium` to install the browser the tests drive
   * Run `mix test`; a failed test leaves its trace and screenshot in `test-results/`
+
+CI also uploads `report.json` and, when it retries failed tests, `report-retry.json` alongside the failure artifacts.

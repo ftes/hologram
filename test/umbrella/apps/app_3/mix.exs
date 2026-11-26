@@ -5,7 +5,7 @@ defmodule App3.MixProject do
     [
       {:hologram,
        git: "https://github.com/ftes/hologram.git",
-       ref: "6cc6eed1623dda243c008085086679197bb88501"}
+       ref: "e3ac31ddbe19cb25432c8f6834c20368c3c1eba4"}
     ]
   end
 
