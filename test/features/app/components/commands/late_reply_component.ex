@@ -26,9 +26,7 @@ defmodule HologramFeatureTests.Components.Commands.LateReplyComponent do
     put_state(component, :result, "component_reply_ran")
   end
 
-  # Stands in for a slow fetch: the reply is still in flight after the user has navigated away.
   def command(:slow_component_command, _params, server) do
-    Process.sleep(3_000)
     put_action(server, :record_component_reply)
   end
 end

@@ -45,7 +45,7 @@ defmodule HologramFeatureTests.Actions.LateResultPage do
   # The destination has the same :result key and renders it, so a surviving write shows there.
   def action(:slow_page_action, _params, component) do
     :helpers
-    |> JS.call(:slowValue, [3000])
+    |> JS.call(:awaitRelease, [])
     |> Task.await()
 
     put_state(component, :result, "page_result_ran")
@@ -55,7 +55,7 @@ defmodule HologramFeatureTests.Actions.LateResultPage do
   # raises on the failed reply.
   def action(:slow_command_action, _params, component) do
     :helpers
-    |> JS.call(:slowValue, [3000])
+    |> JS.call(:awaitRelease, [])
     |> Task.await()
 
     put_command(component, :record_page_command)
@@ -65,7 +65,7 @@ defmodule HologramFeatureTests.Actions.LateResultPage do
   # page they chose.
   def action(:slow_navigating_action, _params, component) do
     :helpers
-    |> JS.call(:slowValue, [3000])
+    |> JS.call(:awaitRelease, [])
     |> Task.await()
 
     put_page(component, Page21)

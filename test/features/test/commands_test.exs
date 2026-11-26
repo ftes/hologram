@@ -105,18 +105,17 @@ defmodule HologramFeatureTests.CommandsTest do
     # feature "next_action"
   end
 
-  # Each slow command sleeps 3 seconds before replying, and each drop test waits 3.5 after
-  # navigating, so the reply arrives on the page navigated to. A component or page reply that
-  # survives raises there, which fails the test (see track_js_errors/1). A layout reply that
-  # survives raises nothing, so its tests read the layout's result.
+  # Hold the real reply in the browser until the destination is mounted. A component or page
+  # reply that survives raises there; a surviving layout reply instead changes its result.
   describe "reply after navigation" do
     # Positive control for the drops below: the same button's reply lands when the user stays put,
     # proving the fixture sends a real command whose reply arrives.
     test "a slow command's reply lands when the user stays on the page", %{page: page} do
       page
       |> visit(LateReplyPage)
-      |> click_button("Run slow component command")
+      |> hold_command_reply("Run slow component command")
       |> assert_text("#component_result", "nil")
+      |> release_command_reply()
       |> assert_text("#component_result", ~s/"component_reply_ran"/)
     end
 
@@ -126,10 +125,10 @@ defmodule HologramFeatureTests.CommandsTest do
          %{page: page} do
       page
       |> visit(LateReplyPage)
-      |> click_button("Run slow component command")
+      |> hold_command_reply("Run slow component command")
       |> click_link("Destination link")
       |> assert_page(LateReplyDestinationPage)
-      |> sleep(3_500)
+      |> release_command_reply()
       |> assert_text("Late reply destination title")
     end
 
@@ -139,11 +138,11 @@ defmodule HologramFeatureTests.CommandsTest do
          %{page: page} do
       page
       |> visit(LateReplyPage)
-      |> click_button("Run slow layout command")
+      |> hold_command_reply("Run slow layout command")
       |> click_link("Destination link")
       |> assert_page(LateReplyDestinationPage)
-      |> sleep(3_500)
-      |> assert_text("#layout_result", "nil")
+      |> release_command_reply()
+      |> assert_text("#layout_result", ~r/^nil$/)
     end
 
     # The page cid resolves on the destination too, but to a module that defines no action at all,
@@ -152,10 +151,10 @@ defmodule HologramFeatureTests.CommandsTest do
          %{page: page} do
       page
       |> visit(LateReplyPage)
-      |> click_button("Run slow page command")
+      |> hold_command_reply("Run slow page command")
       |> click_link("Destination link")
       |> assert_page(LateReplyDestinationPage)
-      |> sleep(3_500)
+      |> release_command_reply()
       |> assert_text("Late reply destination title")
     end
 
@@ -167,11 +166,61 @@ defmodule HologramFeatureTests.CommandsTest do
       |> visit(LateReplyDestinationPage)
       |> click_link("Late reply link")
       |> assert_page(LateReplyPage)
-      |> click_button("Run slow layout command")
+      |> hold_command_reply("Run slow layout command")
       |> go_back()
       |> assert_page(LateReplyDestinationPage)
-      |> sleep(3_500)
-      |> assert_text("#layout_result", "nil")
+      |> release_command_reply()
+      |> assert_text("#layout_result", ~r/^nil$/)
     end
+  end
+
+  defp hold_command_reply(page, button) do
+    Page.evaluate!(page, """
+    () => {
+      const fetch = window.fetch;
+      const barrier = window.commandReplyBarrier = {};
+      const held = new Promise((resolve) => { barrier.release = resolve; });
+      barrier.consumed = new Promise((resolve) => { barrier.finish = resolve; });
+
+      window.fetch = async (url, options) => {
+        if (url !== "/hologram/command") return fetch(url, options);
+
+        window.fetch = fetch;
+        const response = await fetch(url, options);
+        const payload = await response.clone().json();
+
+        if (!response.ok || payload.status !== 1 || payload.chunks.length !== 0) {
+          throw new Error("Expected a successful command reply with no chunks to load");
+        }
+
+        response.json = async () => {
+          // The command continuation schedules its action on a timer. The first
+          // task runs after that continuation; the second runs after its timer.
+          setTimeout(() => setTimeout(barrier.finish, 0), 0);
+          return payload;
+        };
+
+        barrier.ready = true;
+        await held;
+        return response;
+      };
+    }
+    """)
+
+    click_button(page, button)
+    Page.wait_for_function!(page, "() => window.commandReplyBarrier.ready")
+    page
+  end
+
+  defp release_command_reply(page) do
+    Page.evaluate!(page, """
+    () => {
+      const barrier = window.commandReplyBarrier;
+      barrier.release();
+      return barrier.consumed;
+    }
+    """)
+
+    page
   end
 end

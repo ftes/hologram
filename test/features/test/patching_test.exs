@@ -847,53 +847,43 @@ defmodule HologramFeatureTests.PatchingTest do
       page
       |> visit(Page5)
       |> assert_input_value("#select", "option_2")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Setup A: establish baseline programmatic value
       |> click_button("Select Select Option 1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Group 1 (Cond 6): manual non-empty, different from last prog
       |> select_option("#select", "option_2")
       |> assert_input_value("#select", "option_2")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Group 2 (Cond 1): prog non-empty, same as last prog (option_1)
       |> click_button("Select Select Option 1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Group 3 (Cond 2): prog non-empty, different from last prog
       |> click_button("Select Select Option 2")
       |> assert_input_value("#select", "option_2")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Setup B: switch to a different manual value
       |> select_option("#select", "option_1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Group 4 (Cond 5): manual non-empty, same as last prog
       |> select_option("#select", "option_2")
       |> assert_input_value("#select", "option_2")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Group 5 (Cond 4): prog empty, last prog was not empty
       |> click_button("Clear Select")
       |> assert_input_value("#select", "")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Setup C: switch to a different manual value
       |> select_option("#select", "option_1")
       |> assert_input_value("#select", "option_1")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
       # --- Group 6 (Cond 3): prog empty, last prog was also empty
       |> click_button("Clear Select")
       |> assert_input_value("#select", "")
-      |> refute_has("#select_option_1[selected]")
-      |> refute_has("#select_option_2[selected]")
+      |> assert_none("#select option[selected]")
     end
   end
 

@@ -13,7 +13,9 @@ defmodule HologramFeatureTests.SessionRestoreTest do
   # the handler's storage writes are done. So the page is given that moment before the marker is
   # checked.
   defp keep_marker(page) do
-    refute_text(page, "#marker", "none", wait_time: 1_000)
+    page
+    |> sleep(1_000)
+    |> assert_text("#marker", "set")
   end
 
   # Logs in as Alice, opens the account page with a marker put on it, and leaves it for the login

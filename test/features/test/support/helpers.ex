@@ -1,6 +1,6 @@
 defmodule HologramFeatureTests.Helpers do
   import Playwright.Test.Assertions
-  import Hologram.Test.FeatureHelpers, only: [take_js_error: 1, track_js_errors: 1, visit: 3]
+  import Hologram.Test.FeatureHelpers, only: [take_js_error: 2, track_js_errors: 1, visit: 3]
 
   alias Hologram.Assets.PageDigestRegistry
   alias Hologram.Realtime
@@ -25,7 +25,7 @@ defmodule HologramFeatureTests.Helpers do
   it.
   """
   def assert_client_error(page, expected_module, expected_msg, fun) do
-    take_js_error(fun)
+    take_js_error(page, fun)
 
     result = script_result(page, "return globalThis.Hologram?.['lastBoxedError'];")
 
@@ -110,8 +110,8 @@ defmodule HologramFeatureTests.Helpers do
   """
   def assert_js_error(page, expected_msg, fun) do
     message =
-      fun
-      |> take_js_error()
+      page
+      |> take_js_error(fun)
       |> Exception.message()
 
     assert message =~ expected_msg,
@@ -159,6 +159,14 @@ defmodule HologramFeatureTests.Helpers do
   """
   def assert_text(page, text) do
     assert_text(page, "body", text)
+  end
+
+  def assert_text(page, selector, "") do
+    page
+    |> locator(selector)
+    |> Expect.to_have_text!("", use_inner_text: true)
+
+    page
   end
 
   def assert_text(page, selector, text) do
@@ -418,13 +426,8 @@ defmodule HologramFeatureTests.Helpers do
   @doc """
   Asserts that the CSS selector matches no visible element. `text:` narrows the
   matches to the elements containing it.
-
-  Pass `wait_time: ms` to assert absence only after waiting `ms` first, so an
-  appearance arriving within that window is still caught.
   """
   def refute_has(page, selector, opts \\ []) do
-    if wait_time = opts[:wait_time], do: Page.wait_for_timeout!(page, wait_time)
-
     page
     |> visible(selector, opts)
     |> Expect.to_have_count!(0)
@@ -433,11 +436,65 @@ defmodule HologramFeatureTests.Helpers do
   end
 
   @doc """
-  Refutes that an element matching the CSS selector displays `text`. The negative
-  counterpart to `assert_text/3`; accepts the same `opts` as `refute_has/3`.
+  Records changes to a result node's text. Call before the stimulus, then use
+  `refute_text/4` with `wait_time:` to check that even a transient value was absent.
   """
-  def refute_text(page, selector, text, opts \\ []) do
-    refute_has(page, selector, Keyword.put(opts, :text, text))
+  def watch_text(page, selector) do
+    Page.evaluate!(
+      page,
+      """
+      (selector) => {
+        const node = document.querySelector(selector);
+        if (!node) throw new Error(`No result node for ${selector}`);
+
+        const values = new Set([node.textContent]);
+        const observer = new MutationObserver((records) => {
+          for (const record of records) {
+            if (record.type === "characterData") {
+              values.add(record.oldValue);
+            } else {
+              for (const child of record.addedNodes) values.add(child.textContent);
+              for (const child of record.removedNodes) values.add(child.textContent);
+            }
+          }
+          values.add(node.textContent);
+        });
+
+        (globalThis.__hologramTextWatches ??= new Map()).set(selector, {node, observer, values});
+        observer.observe(node, {subtree: true, childList: true, characterData: true, characterDataOldValue: true});
+      }
+      """,
+      selector
+    )
+
+    page
+  end
+
+  @doc "Refutes text that appeared at any point since `watch_text/2` started."
+  def refute_text(page, selector, text, wait_time: wait_time) do
+    sleep(page, wait_time)
+
+    observed =
+      Page.evaluate!(
+        page,
+        """
+        (selector) => {
+          const watches = globalThis.__hologramTextWatches;
+          const watch = watches?.get(selector);
+          if (!watch?.node.isConnected) throw new Error(`Lost the text watch for ${selector}`);
+
+          watch.observer.disconnect();
+          watches.delete(selector);
+          return [...watch.values];
+        }
+        """,
+        selector
+      )
+
+    refute Enum.any?(observed, &String.contains?(&1, text)),
+           "#{selector} displayed #{inspect(text)} while watched: #{inspect(observed)}"
+
+    page
   end
 
   def reload(page) do

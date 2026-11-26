@@ -513,30 +513,19 @@ defmodule HologramFeatureTests.ActionsTest do
     end
   end
 
-  # Each slow action awaits 3 seconds before producing its result, and each drop test waits 3.5
-  # after navigating, so the result settles on the page navigated to. A surviving component result
-  # faults on the registry write there, and a surviving command fails on the server and raises on
-  # the client; both fail the test as uncaught errors (see track_js_errors/1). A
-  # surviving layout or page result raises nothing, so those tests read the result the destination
-  # renders. A surviving navigation pulls the browser off the destination.
+  # Hold the action's awaited promise until the destination is mounted. A surviving component
+  # result raises, a surviving page or layout result changes the destination's DOM, and a
+  # surviving command or navigation starts a request.
   describe "result after navigation" do
-    # The delays run on the page's clock, advanced by run_for/2 rather than waited out. Except
-    # where a surviving result would show only after a server round trip (a command, a
-    # component fault, a navigation): run_for/2 returns as soon as the timer fires, so those
-    # tests wait the time out.
-    setup %{page: page} do
-      install_clock(page)
-      :ok
-    end
-
     # Positive control for the component drop below: the same button's result lands when the user
     # stays put, proving the fixture runs a real slow action whose result is written.
     test "a slow component action's result lands when the user stays on the page",
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow component action")
+      |> hold_late_action("Run slow component action")
       |> assert_text("#component_result", "nil")
+      |> release_late_action()
       |> assert_text("#component_result", ~s/"component_result_ran"/)
     end
 
@@ -546,8 +535,9 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow layout action")
+      |> hold_late_action("Run slow layout action")
       |> assert_text("#layout_result", "nil")
+      |> release_late_action()
       |> assert_text("#layout_result", ~s/"layout_result_ran"/)
     end
 
@@ -557,8 +547,9 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow page action")
+      |> hold_late_action("Run slow page action")
       |> assert_text("#page_result", "nil")
+      |> release_late_action()
       |> assert_text("#page_result", ~s/"page_result_ran"/)
     end
 
@@ -568,8 +559,9 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow command action")
+      |> hold_late_action("Run slow command action")
       |> assert_text("#page_result", "nil")
+      |> release_late_action()
       |> assert_text("#page_result", ~s/"page_command_ran"/)
     end
 
@@ -579,7 +571,8 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow navigating action")
+      |> hold_late_action("Run slow navigating action")
+      |> release_late_action()
       |> assert_page(Page21)
       |> assert_text("Page 21 title")
     end
@@ -590,10 +583,10 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow component action")
+      |> hold_late_action("Run slow component action")
       |> click_link("Destination link")
       |> assert_page(LateResultDestinationPage)
-      |> sleep(3_500)
+      |> release_late_action()
       |> assert_text("Late result destination title")
     end
 
@@ -603,11 +596,11 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow layout action")
+      |> hold_late_action("Run slow layout action")
       |> click_link("Destination link")
       |> assert_page(LateResultDestinationPage)
-      |> run_for(3_500)
-      |> assert_text("#layout_result", "nil")
+      |> release_late_action()
+      |> assert_text("#layout_result", ~r/^nil$/)
     end
 
     # The page cid resolves on the destination too, to a module that renders the same key, so a
@@ -616,11 +609,11 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow page action")
+      |> hold_late_action("Run slow page action")
       |> click_link("Destination link")
       |> assert_page(LateResultDestinationPage)
-      |> run_for(3_500)
-      |> assert_text("#page_result", "nil")
+      |> release_late_action()
+      |> assert_text("#page_result", ~r/^nil$/)
     end
 
     # The destination has no command clause, so a surviving command fails on the server and the
@@ -629,10 +622,10 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow command action")
+      |> hold_late_action("Run slow command action")
       |> click_link("Destination link")
       |> assert_page(LateResultDestinationPage)
-      |> sleep(3_500)
+      |> release_late_action("/hologram/command")
       |> assert_text("Late result destination title")
     end
 
@@ -641,10 +634,10 @@ defmodule HologramFeatureTests.ActionsTest do
          %{page: page} do
       page
       |> visit(LateResultPage)
-      |> click_button("Run slow navigating action")
+      |> hold_late_action("Run slow navigating action")
       |> click_link("Destination link")
       |> assert_page(LateResultDestinationPage)
-      |> sleep(3_500)
+      |> release_late_action("/hologram/page/#{inspect(Page21)}")
       |> assert_page(LateResultDestinationPage)
       |> assert_text("Late result destination title")
     end
@@ -657,12 +650,50 @@ defmodule HologramFeatureTests.ActionsTest do
       |> visit(LateResultDestinationPage)
       |> click_link("Late result link")
       |> assert_page(LateResultPage)
-      |> click_button("Run slow layout action")
+      |> hold_late_action("Run slow layout action")
       |> go_back()
       |> assert_page(LateResultDestinationPage)
-      |> run_for(3_500)
-      |> assert_text("#layout_result", "nil")
+      |> release_late_action()
+      |> assert_text("#layout_result", ~r/^nil$/)
     end
+  end
+
+  defp hold_late_action(page, button) do
+    click_button(page, button)
+    Page.wait_for_function!(page, "() => typeof window.releaseLateAction === 'function'")
+    page
+  end
+
+  defp release_late_action(page, forbidden_request \\ nil) do
+    sent_request? =
+      Page.evaluate!(
+        page,
+        """
+        async (forbiddenRequest) => {
+          const fetch = window.fetch;
+          let sentRequest = false;
+
+          window.fetch = (url, options) => {
+            sentRequest ||= url === forbiddenRequest;
+            return fetch(url, options);
+          };
+
+          try {
+            window.releaseLateAction();
+            delete window.releaseLateAction;
+            // The action resumes in microtasks, before the next browser task.
+            await new Promise((resolve) => setTimeout(resolve, 0));
+            return sentRequest;
+          } finally {
+            window.fetch = fetch;
+          }
+        }
+        """,
+        forbidden_request
+      )
+
+    refute sent_request?, "stale action sent a request to #{forbidden_request}"
+    page
   end
 
   describe "one action at a time" do

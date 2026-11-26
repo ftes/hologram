@@ -42,7 +42,7 @@ defmodule HologramFeatureTests.Components.LateResultLayout do
   # Stands in for a slow fetch: the await is still pending after the user has navigated away.
   def action(:slow_layout_action, _params, component) do
     :helpers
-    |> JS.call(:slowValue, [3000])
+    |> JS.call(:awaitRelease, [])
     |> Task.await()
 
     put_state(component, :result, "layout_result_ran")

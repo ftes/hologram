@@ -77,6 +77,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       wait_for_subscription(session_1, @channel_1)
       wait_for_subscription(session_2, @channel_2)
 
+      watch_text(session_2, "#received")
       Realtime.broadcast_action(@channel_1, :show, message: "delivered to subscriber")
 
       assert_text(session_1, "#received", "delivered to subscriber")
@@ -97,6 +98,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       wait_for_subscription(session_1, @channel_1)
       wait_for_subscription(session_2, @channel_2)
 
+      watch_text(session_2, "#received-widget")
       Realtime.broadcast_action(@channel_1, :show, message: "delivered to widget")
 
       assert_text(session_1, "#received-widget", "delivered to widget")
@@ -120,7 +122,8 @@ defmodule HologramFeatureTests.RealtimeTest do
       # A1 excludes its own instance, so only A1's tab is skipped: its same-session
       # sibling A2 and the unrelated B both still receive (instance exclusion is
       # per-connection, not per-session).
-      session_a1 = click_button(session_a1, "Exclude instance")
+      watch_text(session_a1, "#received")
+      click_button(session_a1, "Exclude instance")
 
       assert_text(session_a2, "#received", "delivered to everyone else")
       assert_text(session_b, "#received", "delivered to everyone else")
@@ -145,6 +148,8 @@ defmodule HologramFeatureTests.RealtimeTest do
       # Excluding A1's instance skips only that one connection: its same-session
       # sibling A2 and the unrelated B both still receive (instance exclusion is
       # per-connection, not per-session).
+      watch_text(session_a1, "#received")
+
       Realtime.broadcast_action_except(
         {:instance, instance_a1},
         @channel_1,
@@ -173,7 +178,9 @@ defmodule HologramFeatureTests.RealtimeTest do
       # A1 excludes its own session, so every tab of that session is skipped: both
       # A1 and its same-session sibling A2 miss the broadcast, while the unrelated B
       # still receives (session exclusion reaches all connections of the session).
-      session_a1 = click_button(session_a1, "Exclude session")
+      watch_text(session_a2, "#received")
+      watch_text(session_a1, "#received")
+      click_button(session_a1, "Exclude session")
 
       assert_text(session_b, "#received", "delivered to all other sessions")
 
@@ -210,6 +217,9 @@ defmodule HologramFeatureTests.RealtimeTest do
       # its same-session sibling A2 miss the broadcast, while B (a different
       # session) receives (session exclusion reaches all connections of the
       # session).
+      watch_text(session_a1, "#received")
+      watch_text(session_a2, "#received")
+
       Realtime.broadcast_action_except(
         {:session, session_a1_id},
         @channel_1,
@@ -243,7 +253,9 @@ defmodule HologramFeatureTests.RealtimeTest do
       # A1 excludes its own user, so every session of that user is skipped: both A1
       # and the same-user-different-session A2 miss the broadcast, while the
       # anonymous B (no user identity to match) receives.
-      session_a1 = click_button(session_a1, "Exclude user")
+      watch_text(session_a2, "#received")
+      watch_text(session_a1, "#received")
+      click_button(session_a1, "Exclude user")
 
       assert_text(session_b, "#received", "delivered to all other users")
 
@@ -272,6 +284,9 @@ defmodule HologramFeatureTests.RealtimeTest do
       # Excluding user 1 skips every session of that user: both A1 and the
       # same-user-different-session A2 miss the broadcast, while the anonymous B
       # (no user identity to match) receives.
+      watch_text(session_a1, "#received")
+      watch_text(session_a2, "#received")
+
       Realtime.broadcast_action_except(
         {:user, 1},
         @channel_1,
@@ -316,7 +331,9 @@ defmodule HologramFeatureTests.RealtimeTest do
       # A1 excludes its own user, so every session of that user is skipped: both A1
       # and the same-user-different-session A2 miss the broadcast, while user 2's B
       # still receives (user exclusion reaches all of a user's connections).
-      session_a1 = click_button(session_a1, "Exclude user")
+      watch_text(session_a2, "#received")
+      watch_text(session_a1, "#received")
+      click_button(session_a1, "Exclude user")
 
       assert_text(session_b, "#received", "delivered to all other users")
 
@@ -345,6 +362,9 @@ defmodule HologramFeatureTests.RealtimeTest do
       # Excluding user 1 skips every session of that user: both A1 and the
       # same-user-different-session A2 miss the broadcast, while B (a different
       # user) receives.
+      watch_text(session_a1, "#received")
+      watch_text(session_a2, "#received")
+
       Realtime.broadcast_action_except(
         {:user, 1},
         @channel_1,
@@ -422,6 +442,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       wait_for_subscription(page, @channel_2)
 
       page
+      |> watch_text("#received-1")
       |> click_button("Unsubscribe and broadcast")
       |> assert_text("#received-2", "delivered")
       |> refute_text("#received-1", "delivered", wait_time: 1_000)
@@ -443,6 +464,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       Realtime.unsubscribe({:instance, current_instance_id(page)}, @channel_1, "page")
       page = wait_for_no_subscription(page, @channel_1)
 
+      watch_text(page, "#received-1")
       Realtime.broadcast_action(@channel_1, :show_1, message: "blocked")
       Realtime.broadcast_action(@channel_2, :show_2, message: "delivered to other channel")
 
@@ -466,6 +488,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       wait_for_subscription(page, @channel_1, 1, "component_3")
 
       page
+      |> watch_text("#received-component-3")
       |> click_button("Unsubscribe and broadcast")
       |> assert_text("#received-component-1", "delivered to sibling cid")
       |> refute_text("#received-component-3", "delivered to sibling cid", wait_time: 1_000)
@@ -492,6 +515,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       page = wait_for_no_subscription(page, @channel_1, "component_1")
 
       page
+      |> watch_text("#received-component-1")
       |> click_button("Broadcast")
       |> assert_text("#received-page", "delivered")
       |> refute_text("#received-component-1", "delivered", wait_time: 1_000)
@@ -514,10 +538,12 @@ defmodule HologramFeatureTests.RealtimeTest do
       page = wait_for_no_subscription(page, @channel_1)
 
       page
+      |> watch_text("#received-component-1")
+      |> watch_text("#received-component-2")
       |> click_button("Broadcast")
       |> assert_text("#received-page", "delivered")
       |> refute_text("#received-component-1", "delivered", wait_time: 1_000)
-      |> refute_text("#received-component-2", "delivered", wait_time: 1_000)
+      |> refute_text("#received-component-2", "delivered", wait_time: 0)
     end
   end
 
@@ -535,6 +561,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       page = wait_for_no_subscription(page, @channel_1)
 
       page
+      |> watch_text("#received-1")
       |> click_button("Broadcast")
       |> assert_text("#received-2", "delivered")
       |> refute_text("#received-1", "delivered", wait_time: 1_000)
@@ -653,6 +680,7 @@ defmodule HologramFeatureTests.RealtimeTest do
       # tombstoned @channel_1 receipt is rejected at handshake verification.
       page = wait_for_subscription(page, @channel_2)
 
+      watch_text(page, "#received-1")
       Realtime.broadcast_action(@channel_1, :show_1, message: "blocked")
       Realtime.broadcast_action(@channel_2, :show_2, message: "delivered")
 
@@ -764,6 +792,7 @@ defmodule HologramFeatureTests.RealtimeTest do
 
       # The dropped binding means this broadcast must never reach the client.
       # Give it time to (not) arrive before refuting that it ever showed up.
+      watch_text(page, "#received")
       Realtime.broadcast_action(@channel_1, :show, message: "blocked after logout")
 
       refute_text(page, "#received", "blocked after logout", wait_time: 1_000)
@@ -805,13 +834,15 @@ defmodule HologramFeatureTests.RealtimeTest do
       tab_a = click_button(tab_a, "Log out")
       wait_for_no_subscription(tab_a, @channel_1)
 
+      watch_text(tab_a, "#received")
+      watch_text(tab_b, "#received")
       Realtime.broadcast_action(@channel_1, :show, message: "blocked after logout")
 
       # Both tabs converge: the post-logout broadcast dispatches on neither, and
       # neither reloaded (each still shows its pre-logout value, not "none").
       refute_text(tab_a, "#received", "blocked after logout", wait_time: 1_000)
       assert_text(tab_a, "#received", "delivered while authed")
-      refute_text(tab_b, "#received", "blocked after logout")
+      refute_text(tab_b, "#received", "blocked after logout", wait_time: 0)
       assert_text(tab_b, "#received", "delivered while authed")
     end
 
@@ -842,6 +873,7 @@ defmodule HologramFeatureTests.RealtimeTest do
 
       # The dropped binding means the post-logout broadcast never reaches tab B,
       # and tab B did not reload (it still shows its pre-logout value, not "none").
+      watch_text(tab_b, "#received")
       Realtime.broadcast_action(@channel_1, :show, message: "blocked after logout")
 
       refute_text(tab_b, "#received", "blocked after logout", wait_time: 1_000)
